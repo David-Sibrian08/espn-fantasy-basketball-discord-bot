@@ -176,13 +176,11 @@ public class WeeklyRecapScheduler {
 
             embed.addField("💥 Biggest Win (Week " + targetWeek + ")",
                     weekly.biggest.winnerName + " over " + weekly.biggest.loserName +
-                            "\n**" + fmt1(weekly.biggest.margin) + " point margin**",
+                            "\n**" + fmt1(weekly.biggest.margin) + " point margin**\n",
                     false);
 
-            embed.addField("🧱 Biggest Loss (Week " + targetWeek + ")",
-                    weekly.biggest.loserName + " vs " + weekly.biggest.winnerName +
-                            "\n**" + fmt1(weekly.biggest.margin) + " point margin**",
-                    false);
+            //spacer field
+            embed.addField("\u200B", "\u200B", true);
 
             // Season trophy race (counts through targetWeek + season best values)
             embed.addField("🏆 Season Trophy Race (through Week " + targetWeek + ")",
@@ -191,7 +189,7 @@ public class WeeklyRecapScheduler {
 
             // Record watch (only broken records, otherwise none)
             String recordWatchText = recordWatchLines.isEmpty()
-                    ? "📌 No all-time records were broken this week."
+                    ? "No all-time records were broken this week."
                     : "🚨 **NEW ALL-TIME RECORD(S)!**\n" + String.join("\n", recordWatchLines);
 
             embed.addField("📌 Record Watch", recordWatchText, false);
@@ -530,38 +528,13 @@ public class WeeklyRecapScheduler {
     // Data models
     // ----------------------------
 
-    private static class TeamScore {
-        final String teamName;
-        final double points;
-        TeamScore(String teamName, double points) {
-            this.teamName = teamName;
-            this.points = points;
-        }
+    private record TeamScore(String teamName, double points) {
     }
 
-    private static class MarginResult {
-        final String winnerName;
-        final String loserName;
-        final double margin;
-        MarginResult(String winnerName, String loserName, double margin) {
-            this.winnerName = winnerName;
-            this.loserName = loserName;
-            this.margin = margin;
-        }
+    private record MarginResult(String winnerName, String loserName, double margin) {
     }
 
-    private static class WeeklyWinners {
-        final TeamScore highest;
-        final TeamScore lowest;
-        final MarginResult biggest;
-        final MarginResult closest;
-
-        WeeklyWinners(TeamScore highest, TeamScore lowest, MarginResult biggest, MarginResult closest) {
-            this.highest = highest;
-            this.lowest = lowest;
-            this.biggest = biggest;
-            this.closest = closest;
-        }
+    private record WeeklyWinners(TeamScore highest, TeamScore lowest, MarginResult biggest, MarginResult closest) {
     }
 
     private record SeasonAccolades(Map<String, Integer> highCount, Map<String, Integer> lowCount,
