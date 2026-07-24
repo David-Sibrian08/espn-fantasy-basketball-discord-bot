@@ -167,37 +167,31 @@ public class WeeklyRecapScheduler {
             // Build recap embed
             EmbedBuilder embed = new EmbedBuilder()
                     .setTitle("📊 Week " + targetWeek + " Recap")
-                    .setDescription("Here's how week " + targetWeek + " played out!")
                     .setColor(Color.BLUE);
 
-            // Weekly recap (this week only)
-            embed.addField("🔥 Highest Scorer (Week " + targetWeek + ")",
-                    weekly.highest.teamName + "\n**" + fmt1(weekly.highest.points) + " points**",
-                    false);
+            // Weekly recap (this week only) — inline so they sit side by side instead of stacking
+            embed.addField("🔥 Highest Scorer",
+                    weekly.highest.teamName + "\n**" + fmt1(weekly.highest.points) + "**",
+                    true);
 
-            embed.addField("❄️ Lowest Scorer (Week " + targetWeek + ")",
-                    weekly.lowest.teamName + "\n**" + fmt1(weekly.lowest.points) + " points**",
-                    false);
+            embed.addField("❄️ Lowest Scorer",
+                    weekly.lowest.teamName + "\n**" + fmt1(weekly.lowest.points) + "**",
+                    true);
 
-            embed.addField("💥 Biggest Win (Week " + targetWeek + ")",
+            embed.addField("💥 Biggest Win",
                     weekly.biggest.winnerName + " over " + weekly.biggest.loserName +
-                            "\n**" + fmt1(weekly.biggest.margin) + " point margin**\n",
-                    false);
-
-            //spacer field
-            embed.addField("\u200B", "\u200B", true);
+                            "\n**" + fmt1(weekly.biggest.margin) + " margin**",
+                    true);
 
             // Season trophy race (counts through targetWeek + season best values)
             embed.addField("🏆 Season Trophy Race (through Week " + targetWeek + ")",
                     seasonAccolades.toDiscordBlock(),
                     false);
 
-            // Record watch (only broken records, otherwise none)
-            String recordWatchText = recordWatchLines.isEmpty()
-                    ? "No all-time records were broken this week."
-                    : "🚨 **NEW ALL-TIME RECORD(S)!**\n" + String.join("\n", recordWatchLines);
-
-            embed.addField("📌 Record Watch", recordWatchText, false);
+            // Record watch — only shown when there's actually something to report
+            if (!recordWatchLines.isEmpty()) {
+                embed.addField("📌 Record Watch", "🚨 **NEW ALL-TIME RECORD(S)!**\n" + String.join("\n", recordWatchLines), false);
+            }
 
             embed.setFooter("Season " + currentSeasonId + " • Week " + targetWeek);
 
@@ -557,14 +551,10 @@ public class WeeklyRecapScheduler {
                 String lossLeader = topKey(lossCount);
 
                 return "```txt\n" +
-                        "🔥 Highest Score (count)\n" +
-                        line(highLeader, highCount) + " \nSeason High: " + seasonHigh.teamName + " (" + fmt1(seasonHigh.points) + ")\n\n" +
-                        "❄️ Lowest Score (count)\n" +
-                        line(lowLeader, lowCount) + " \nSeason Low:  " + seasonLow.teamName + " (" + fmt1(seasonLow.points) + ")\n\n" +
-                        "💥 Biggest Win (count)\n" +
-                        line(winLeader, winCount) + " \nBiggest:    " + seasonBigWin.winnerName + " by " + fmt1(seasonBigWin.margin) + "\n\n" +
-                        "🧱 Biggest Loss (count)\n" +
-                        line(lossLeader, lossCount) + " \nWorst:      " + seasonBigLoss.loserName + " by " + fmt1(seasonBigLoss.margin) + "\n" +
+                        "🔥 Highest Score: " + line(highLeader, highCount) + " — Season High: " + seasonHigh.teamName + " (" + fmt1(seasonHigh.points) + ")\n" +
+                        "❄️ Lowest Score:  " + line(lowLeader, lowCount) + " — Season Low: " + seasonLow.teamName + " (" + fmt1(seasonLow.points) + ")\n" +
+                        "💥 Biggest Win:   " + line(winLeader, winCount) + " — Season Best: " + seasonBigWin.winnerName + " by " + fmt1(seasonBigWin.margin) + "\n" +
+                        "🧱 Biggest Loss:  " + line(lossLeader, lossCount) + " — Season Worst: " + seasonBigLoss.loserName + " by " + fmt1(seasonBigLoss.margin) + "\n" +
                         "```";
             }
 
