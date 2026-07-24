@@ -19,6 +19,8 @@ to fork any code to do that, just configure your own `.env`.
   win, season trophy race, all-time record tracking)
 - `/lineupcheck` — on-demand check for OUT/DOUBTFUL players currently in a
   starting lineup slot
+- `/lineupalerts` — turn the automatic lineup health alerts on/off instantly,
+  no restart needed (requires Manage Server permission)
 - Optional automatic weekly recap posted to a channel of your choice every
   Monday
 - Optional automatic lineup health alerts — pings a starting player's owner
@@ -121,6 +123,10 @@ OUT/DOUBTFUL player:
 NBA fantasy locks each player individually at their own game's tip-off, not
 once a week like football — so this runs on its own schedule, independent of
 the weekly recap.
+
+Use `/lineupalerts enabled:false` to pause alerts anytime (e.g. mid-season)
+without touching `.env` or restarting the bot; `/lineupalerts enabled:true`
+turns them back on. The setting persists across restarts.
 
 ## Notes on the weekly recap scheduler
 

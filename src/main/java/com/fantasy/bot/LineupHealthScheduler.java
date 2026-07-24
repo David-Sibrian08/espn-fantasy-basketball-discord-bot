@@ -2,6 +2,7 @@ package com.fantasy.bot;
 
 import com.fantasy.bot.api.ESPNApiClient;
 import com.fantasy.bot.config.BotConfig;
+import com.fantasy.bot.lineup.LineupAlertsState;
 import com.fantasy.bot.lineup.LineupHealthChecker;
 import com.fantasy.bot.lineup.LineupHealthChecker.LineupAlert;
 import com.fantasy.bot.lineup.TeamOwnerRegistry;
@@ -33,14 +34,16 @@ public class LineupHealthScheduler {
     private final JDA jda;
     private final ESPNApiClient apiClient;
     private final TeamOwnerRegistry ownerRegistry;
+    private final LineupAlertsState state;
     private final ScheduledExecutorService scheduler;
     private final long alertChannelId;
     private final Set<String> alreadyAlerted = ConcurrentHashMap.newKeySet();
 
-    public LineupHealthScheduler(JDA jda, ESPNApiClient apiClient, TeamOwnerRegistry ownerRegistry) {
+    public LineupHealthScheduler(JDA jda, ESPNApiClient apiClient, TeamOwnerRegistry ownerRegistry, LineupAlertsState state) {
         this.jda = jda;
         this.apiClient = apiClient;
         this.ownerRegistry = ownerRegistry;
+        this.state = state;
         this.scheduler = Executors.newScheduledThreadPool(1);
 
         Long channelId = BotConfig.get().getLineupAlertChannelId();
@@ -58,6 +61,8 @@ public class LineupHealthScheduler {
     }
 
     private void checkNow() {
+        if (!state.isEnabled()) return;
+
         TextChannel channel = jda.getTextChannelById(alertChannelId);
         if (channel == null) {
             log.warn("LINEUP_ALERT_CHANNEL_ID {} not found", alertChannelId);
