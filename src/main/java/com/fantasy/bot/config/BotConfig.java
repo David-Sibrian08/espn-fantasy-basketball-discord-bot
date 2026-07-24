@@ -84,6 +84,11 @@ public final class BotConfig {
             errors.add("RECAP_CHANNEL_ID must be numeric (a Discord channel ID), got: " + recapChannel);
         }
 
+        String lineupAlertChannel = getRaw("LINEUP_ALERT_CHANNEL_ID");
+        if (!isBlank(lineupAlertChannel) && !lineupAlertChannel.trim().matches("\\d+")) {
+            errors.add("LINEUP_ALERT_CHANNEL_ID must be numeric (a Discord channel ID), got: " + lineupAlertChannel);
+        }
+
         boolean hasS2 = !isBlank(getRaw("ESPN_S2"));
         boolean hasSwid = !isBlank(getRaw("SWID"));
         if (hasS2 != hasSwid) {
@@ -95,6 +100,17 @@ public final class BotConfig {
 
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
+    }
+
+    /** Returns null if unset or not a valid long, rather than throwing. */
+    public Long getLineupAlertChannelId() {
+        String raw = getRaw("LINEUP_ALERT_CHANNEL_ID");
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     public String getRaw(String key) {

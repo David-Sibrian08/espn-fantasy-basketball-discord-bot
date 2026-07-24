@@ -20,7 +20,10 @@ public class ESPNApiClient {
 
     // Short TTL cache so bursts of interactions (e.g. matchup pager buttons)
     // don't hammer ESPN with duplicate requests for the same season.
-    private static final long CACHE_TTL_MILLIS = 30_000;
+    private static final long LEAGUE_CACHE_TTL_MILLIS = 30_000;
+
+    // Pro team schedules barely change intra-day, so this can be cached much longer.
+    private static final long SCHEDULE_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L;
 
     private final OkHttpClient client;
     private final String leagueId;
@@ -28,11 +31,12 @@ public class ESPNApiClient {
     private final String espnS2;
     private final String swid;
 
-    private final Map<String, CachedResponse> cache = new ConcurrentHashMap<>();
+    private final Map<String, CachedResponse> leagueCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedResponse> scheduleCache = new ConcurrentHashMap<>();
 
-    private record CachedResponse(JsonObject data, long fetchedAtMillis) {
+    private record CachedResponse(JsonObject data, long fetchedAtMillis, long ttlMillis) {
         boolean isFresh() {
-            return System.currentTimeMillis() - fetchedAtMillis < CACHE_TTL_MILLIS;
+            return System.currentTimeMillis() - fetchedAtMillis < ttlMillis;
         }
     }
 
@@ -55,7 +59,11 @@ public class ESPNApiClient {
     private String buildLeagueUrl(String host, String seasonId) {
         return host + "/apis/v3/games/fba/seasons/" + seasonId +
                 "/segments/0/leagues/" + leagueId +
-                "?view=mMatchup&view=mStandings&view=mTeam&view=mSettings";
+                "?view=mMatchup&view=mStandings&view=mTeam&view=mSettings&view=mRoster";
+    }
+
+    private String buildProTeamScheduleUrl(String host, String seasonId) {
+        return host + "/apis/v3/games/fba/seasons/" + seasonId + "?view=proTeamSchedules_wl";
     }
 
     public JsonObject getLeagueData() throws IOException {
@@ -64,7 +72,24 @@ public class ESPNApiClient {
 
     public JsonObject getLeagueData(int seasonId) throws IOException {
         String seasonStr = String.valueOf(seasonId);
+        return getCachedOrFetch(leagueCache, seasonStr, LEAGUE_CACHE_TTL_MILLIS, this::buildLeagueUrl);
+    }
 
+    /** Real-world NBA game schedule per pro team, keyed by scoringPeriodId (day). */
+    public JsonObject getProTeamSchedules() throws IOException {
+        return getProTeamSchedules(Integer.parseInt(defaultSeasonId));
+    }
+
+    public JsonObject getProTeamSchedules(int seasonId) throws IOException {
+        String seasonStr = String.valueOf(seasonId);
+        return getCachedOrFetch(scheduleCache, seasonStr, SCHEDULE_CACHE_TTL_MILLIS, this::buildProTeamScheduleUrl);
+    }
+
+    private interface UrlBuilder {
+        String build(String host, String seasonId);
+    }
+
+    private JsonObject getCachedOrFetch(Map<String, CachedResponse> cache, String seasonStr, long ttlMillis, UrlBuilder urlBuilder) throws IOException {
         CachedResponse cached = cache.get(seasonStr);
         if (cached != null && cached.isFresh()) {
             return cached.data();
@@ -72,19 +97,17 @@ public class ESPNApiClient {
 
         JsonObject data;
         try {
-            data = fetchLeagueData(HOST_READONLY, seasonStr);
+            data = fetchJson(urlBuilder.build(HOST_READONLY, seasonStr));
         } catch (IOException e) {
             log.info("Read-only host failed for season {}, trying primary host...", seasonStr);
-            data = fetchLeagueData(HOST_PRIMARY, seasonStr);
+            data = fetchJson(urlBuilder.build(HOST_PRIMARY, seasonStr));
         }
 
-        cache.put(seasonStr, new CachedResponse(data, System.currentTimeMillis()));
+        cache.put(seasonStr, new CachedResponse(data, System.currentTimeMillis(), ttlMillis));
         return data;
     }
 
-    private JsonObject fetchLeagueData(String host, String seasonId) throws IOException {
-        String url = buildLeagueUrl(host, seasonId);
-
+    private JsonObject fetchJson(String url) throws IOException {
         Request.Builder requestBuilder = new Request.Builder()
                 .url(url)
                 .addHeader("Accept", "application/json")
