@@ -27,9 +27,10 @@ public class TeamOwnerRegistry {
         this.teamIdToDiscordUserId = load();
     }
 
-    /** Discord user ID for the given ESPN team ID, or null if not configured. */
+    /** Discord user ID for the given ESPN team ID, or null if not configured (including blank entries, e.g. owners without Discord). */
     public String getDiscordUserId(int espnTeamId) {
-        return teamIdToDiscordUserId.get(String.valueOf(espnTeamId));
+        String value = teamIdToDiscordUserId.get(String.valueOf(espnTeamId));
+        return (value == null || value.isBlank()) ? null : value;
     }
 
     private static Map<String, String> load() {
@@ -45,6 +46,9 @@ public class TeamOwnerRegistry {
             return parsed != null ? parsed : Map.of();
         } catch (IOException e) {
             log.error("Failed to read team_owners.json, no owners will be mapped", e);
+            return Map.of();
+        } catch (Exception e) {
+            log.error("team_owners.json is malformed (invalid JSON) — no owners will be mapped until it's fixed", e);
             return Map.of();
         }
     }
