@@ -25,6 +25,9 @@ public class ESPNApiClient {
     // Pro team schedules barely change intra-day, so this can be cached much longer.
     private static final long SCHEDULE_CACHE_TTL_MILLIS = 6 * 60 * 60 * 1000L;
 
+    // A past day's roster/stats snapshot is immutable once final, so this can be cached long-term too.
+    private static final long DAY_ROSTER_CACHE_TTL_MILLIS = 24 * 60 * 60 * 1000L;
+
     private final OkHttpClient client;
     private final String leagueId;
     private final String defaultSeasonId;
@@ -33,6 +36,7 @@ public class ESPNApiClient {
 
     private final Map<String, CachedResponse> leagueCache = new ConcurrentHashMap<>();
     private final Map<String, CachedResponse> scheduleCache = new ConcurrentHashMap<>();
+    private final Map<String, CachedResponse> dayRosterCache = new ConcurrentHashMap<>();
 
     private record CachedResponse(JsonObject data, long fetchedAtMillis, long ttlMillis) {
         boolean isFresh() {
@@ -83,6 +87,21 @@ public class ESPNApiClient {
     public JsonObject getProTeamSchedules(int seasonId) throws IOException {
         String seasonStr = String.valueOf(seasonId);
         return getCachedOrFetch(scheduleCache, seasonStr, SCHEDULE_CACHE_TTL_MILLIS, this::buildProTeamScheduleUrl);
+    }
+
+    /**
+     * Every team's roster/lineup snapshot AS IT WAS on a specific day, with
+     * each rostered player's actual fantasy points for that day
+     * (playerPoolEntry.appliedStatTotal). One bulk call covers all teams.
+     */
+    public JsonObject getRosterForDay(int scoringPeriodId) throws IOException {
+        return getRosterForDay(Integer.parseInt(defaultSeasonId), scoringPeriodId);
+    }
+
+    public JsonObject getRosterForDay(int seasonId, int scoringPeriodId) throws IOException {
+        String cacheKey = seasonId + ":" + scoringPeriodId;
+        return getCachedOrFetch(dayRosterCache, cacheKey, DAY_ROSTER_CACHE_TTL_MILLIS,
+                (host, ignoredKey) -> buildLeagueUrl(host, String.valueOf(seasonId)) + "&scoringPeriodId=" + scoringPeriodId);
     }
 
     private interface UrlBuilder {

@@ -2,20 +2,29 @@ package com.fantasy.bot.utils;
 
 import com.fantasy.bot.api.ESPNApiClient;
 import com.fantasy.bot.config.BotConfig;
+import com.fantasy.bot.lineup.LineupHealthChecker;
+import com.fantasy.bot.matchup.BoxScoreCalculator;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.MessageEmbed;
 import net.dv8tion.jda.api.interactions.components.buttons.Button;
 import net.dv8tion.jda.api.interactions.components.selections.StringSelectMenu;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.Color;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
 
 public class MatchupView {
+    private static final Logger log = LoggerFactory.getLogger(MatchupView.class);
+
     private final ESPNApiClient apiClient;
     private int currentWeek;
     private final int originalWeek;
@@ -57,6 +66,26 @@ public class MatchupView {
             if (!m.has("home") || !m.has("away")) continue;
             games.add(m);
         }
+
+        // Gather every day that counts toward any game this week, and fetch each
+        // day's roster snapshot once (cached by ESPNApiClient), so top-scorer
+        // lookups below don't refetch the same day per game.
+        Set<Integer> allDaysThisWeek = new HashSet<>();
+        for (JsonObject m : games) {
+            collectDays(m.getAsJsonObject("home"), allDaysThisWeek);
+            collectDays(m.getAsJsonObject("away"), allDaysThisWeek);
+        }
+
+        Map<Integer, JsonObject> rosterByDay = new HashMap<>();
+        for (int day : allDaysThisWeek) {
+            try {
+                rosterByDay.put(day, apiClient.getRosterForDay(day));
+            } catch (Exception e) {
+                log.warn("Failed to fetch roster for day {}, top scorer for that day will be skipped", day, e);
+            }
+        }
+
+        Set<Integer> startingSlotIds = LineupHealthChecker.startingSlotIds(data);
 
         // Header embed (like TS)
         String seasonRaw = BotConfig.get().getEspnSeasonId();
@@ -132,6 +161,18 @@ public class MatchupView {
                 body += "\n🏆 **Winner:** " + winnerName + (winnerScore != null ? " (" + winnerScore + ")" : "");
             }
 
+            Optional<BoxScoreCalculator.TopScorer> awayTop = BoxScoreCalculator.computeTopScorer(
+                    awayId, daysFor(away), rosterByDay, startingSlotIds);
+            Optional<BoxScoreCalculator.TopScorer> homeTop = BoxScoreCalculator.computeTopScorer(
+                    homeId, daysFor(home), rosterByDay, startingSlotIds);
+
+            if (awayTop.isPresent()) {
+                body += "\n🔥 Top Scorer (Away): " + awayTop.get().playerName() + " — " + String.format("%.1f", awayTop.get().points());
+            }
+            if (homeTop.isPresent()) {
+                body += "\n🔥 Top Scorer (Home): " + homeTop.get().playerName() + " — " + String.format("%.1f", homeTop.get().points());
+            }
+
             EmbedBuilder game = new EmbedBuilder()
                     .setColor(Color.BLUE)
                     .setDescription(body);
@@ -188,6 +229,20 @@ public class MatchupView {
         if (week >= 1 && week <= maxWeek) {
             currentWeek = week;
         }
+    }
+
+    private static void collectDays(JsonObject side, Set<Integer> out) {
+        if (side == null || !side.has("pointsByScoringPeriod")) return;
+        JsonObject byPeriod = side.getAsJsonObject("pointsByScoringPeriod");
+        for (String key : byPeriod.keySet()) {
+            out.add(Integer.parseInt(key));
+        }
+    }
+
+    private static Set<Integer> daysFor(JsonObject side) {
+        Set<Integer> days = new HashSet<>();
+        collectDays(side, days);
+        return days;
     }
 
     private static String getString(JsonObject obj, String key) {
