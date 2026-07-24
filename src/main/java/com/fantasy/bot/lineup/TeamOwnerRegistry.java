@@ -1,0 +1,51 @@
+package com.fantasy.bot.lineup;
+
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.IOException;
+import java.lang.reflect.Type;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
+
+/**
+ * Static, manually-edited mapping of ESPN team ID -> Discord user ID, so
+ * lineup health alerts can @mention the right person. Loaded once at
+ * startup; edit team_owners.json and restart the bot to change it.
+ */
+public class TeamOwnerRegistry {
+    private static final Logger log = LoggerFactory.getLogger(TeamOwnerRegistry.class);
+    private static final Path FILE = Path.of("team_owners.json");
+    private static final Gson GSON = new Gson();
+
+    private final Map<String, String> teamIdToDiscordUserId;
+
+    public TeamOwnerRegistry() {
+        this.teamIdToDiscordUserId = load();
+    }
+
+    /** Discord user ID for the given ESPN team ID, or null if not configured. */
+    public String getDiscordUserId(int espnTeamId) {
+        return teamIdToDiscordUserId.get(String.valueOf(espnTeamId));
+    }
+
+    private static Map<String, String> load() {
+        if (!Files.exists(FILE)) {
+            log.warn("team_owners.json not found — lineup health alerts won't be able to @mention anyone. See team_owners.example.json.");
+            return Map.of();
+        }
+
+        try {
+            String json = Files.readString(FILE);
+            Type type = new TypeToken<Map<String, String>>() {}.getType();
+            Map<String, String> parsed = GSON.fromJson(json, type);
+            return parsed != null ? parsed : Map.of();
+        } catch (IOException e) {
+            log.error("Failed to read team_owners.json, no owners will be mapped", e);
+            return Map.of();
+        }
+    }
+}

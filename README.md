@@ -17,8 +17,13 @@ to fork any code to do that, just configure your own `.env`.
   buttons/dropdown to page through other weeks
 - `/recap` — on-demand recap for a given week (highest/lowest scorer, biggest
   win, season trophy race, all-time record tracking)
+- `/lineupcheck` — on-demand check for OUT/DOUBTFUL players currently in a
+  starting lineup slot
 - Optional automatic weekly recap posted to a channel of your choice every
   Monday
+- Optional automatic lineup health alerts — pings a starting player's owner
+  in a channel of your choice if they're OUT/DOUBTFUL and their game locks
+  within ~30 minutes
 
 ## Prerequisites
 
@@ -97,6 +102,25 @@ docker run -d --name espn-fantasy-bot \
   -v "$(pwd)/all_time_records.json:/app/all_time_records.json" \
   espn-fantasy-bot
 ```
+
+## Setting up lineup health alerts (optional)
+
+To have the bot @mention team owners when they're about to start an
+OUT/DOUBTFUL player:
+
+1. Set `LINEUP_ALERT_CHANNEL_ID` in `.env` to the channel where alerts should
+   post.
+2. `cp team_owners.example.json team_owners.json` and fill in each ESPN team
+   ID (see `/league` or `/standings`) with the corresponding Discord user ID
+   (enable Developer Mode in Discord settings, then right-click a user >
+   Copy User ID). `team_owners.json` is gitignored since it contains real
+   people's Discord IDs — don't commit it.
+3. Restart the bot. It polls every 10 minutes and alerts once per
+   player/game (no repeat pings for the same lock).
+
+NBA fantasy locks each player individually at their own game's tip-off, not
+once a week like football — so this runs on its own schedule, independent of
+the weekly recap.
 
 ## Notes on the weekly recap scheduler
 

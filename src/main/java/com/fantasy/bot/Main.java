@@ -2,6 +2,7 @@ package com.fantasy.bot;
 
 import com.fantasy.bot.api.ESPNApiClient;
 import com.fantasy.bot.config.BotConfig;
+import com.fantasy.bot.lineup.TeamOwnerRegistry;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.requests.GatewayIntent;
@@ -33,12 +34,15 @@ public class Main {
             jda.awaitReady();
 
             ESPNApiClient apiClient = new ESPNApiClient();
-            WeeklyRecapScheduler scheduler = new WeeklyRecapScheduler(jda, apiClient);
+            TeamOwnerRegistry ownerRegistry = new TeamOwnerRegistry();
+            WeeklyRecapScheduler recapScheduler = new WeeklyRecapScheduler(jda, apiClient);
+            LineupHealthScheduler lineupScheduler = new LineupHealthScheduler(jda, apiClient, ownerRegistry);
 
-            CommandManager commandManager = new CommandManager(jda, apiClient, scheduler);
+            CommandManager commandManager = new CommandManager(jda, apiClient, recapScheduler, ownerRegistry);
             commandManager.registerCommands();
 
-            scheduler.start();
+            recapScheduler.start();
+            lineupScheduler.start();
 
             log.info("Bot is online!");
 
