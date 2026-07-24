@@ -1,6 +1,7 @@
 package com.fantasy.bot;
 
 import com.fantasy.bot.api.ESPNApiClient;
+import com.fantasy.bot.config.BotConfig;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -8,6 +9,8 @@ import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.Color;
 import java.io.IOException;
@@ -19,6 +22,8 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class WeeklyRecapScheduler {
+    private static final Logger log = LoggerFactory.getLogger(WeeklyRecapScheduler.class);
+
     private final JDA jda;
     private final ESPNApiClient apiClient;
     private final ScheduledExecutorService scheduler;
@@ -31,19 +36,19 @@ public class WeeklyRecapScheduler {
     // Your league history starts at 2019 (per you)
     private static final int FIRST_SEASON_ID = 2019;
 
-    public WeeklyRecapScheduler(JDA jda) {
+    public WeeklyRecapScheduler(JDA jda, ESPNApiClient apiClient) {
         this.jda = jda;
-        this.apiClient = new ESPNApiClient();
+        this.apiClient = apiClient;
         this.scheduler = Executors.newScheduledThreadPool(1);
 
-        String channelIdStr = System.getenv("RECAP_CHANNEL_ID");
-        this.recapChannelId = channelIdStr != null ? Long.parseLong(channelIdStr) : 0L;
+        Long channelId = BotConfig.get().getRecapChannelId();
+        this.recapChannelId = channelId != null ? channelId : 0L;
     }
 
     // For later, when you actually schedule it
     public void start() {
         if (recapChannelId == 0) {
-            System.out.println("RECAP_CHANNEL_ID not set. Weekly recaps disabled.");
+            log.info("RECAP_CHANNEL_ID not set. Weekly recaps disabled.");
             return;
         }
 
@@ -56,13 +61,13 @@ public class WeeklyRecapScheduler {
                 TimeUnit.MINUTES
         );
 
-        System.out.println("Weekly recap scheduler started!");
+        log.info("Weekly recap scheduler started!");
     }
 
     // Manual call (you can invoke this on Mondays)
     public void runNow() {
         if (recapChannelId == 0) {
-            System.out.println("RECAP_CHANNEL_ID not set. Cannot post recap.");
+            log.warn("RECAP_CHANNEL_ID not set. Cannot post recap.");
             return;
         }
         TextChannel channel = jda.getTextChannelById(recapChannelId);
@@ -199,7 +204,7 @@ public class WeeklyRecapScheduler {
             channel.sendMessageEmbeds(embed.build()).queue();
 
         } catch (Exception e) {
-            e.printStackTrace();
+            log.error("Failed to send weekly recap", e);
         }
     }
 
@@ -422,9 +427,7 @@ public class WeeklyRecapScheduler {
     // ----------------------------
 
     private int getCurrentSeasonId() {
-        String seasonStr = System.getenv("ESPN_SEASON_ID");
-        if (seasonStr == null || seasonStr.trim().isEmpty()) return 2026;
-        return Integer.parseInt(seasonStr.trim());
+        return Integer.parseInt(BotConfig.get().getEspnSeasonId());
     }
 
     private Integer getCurrentWeek(JsonObject data) {
