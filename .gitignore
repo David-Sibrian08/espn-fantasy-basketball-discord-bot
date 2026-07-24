@@ -42,3 +42,4 @@ build/
 ### Misc ###
 all_time_records.json
 team_owners.json
+lineup_alerts_state.json
