@@ -1,0 +1,14 @@
+target/
+.git/
+.idea/
+*.iml
+.env
+.env.example
+all_time_records.json
+README.md
+LICENSE
+.DS_Store
+.gitignore
+Dockerfile
+.dockerignore
+docker-compose.yml
