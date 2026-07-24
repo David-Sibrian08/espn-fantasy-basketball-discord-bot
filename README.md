@@ -74,6 +74,30 @@ java -jar target/espn-fantasy-bot-1.0-SNAPSHOT.jar
 The bot registers its slash commands globally on startup, which can take up
 to an hour to show up in Discord the first time.
 
+On startup, the bot validates your `.env` and will refuse to start (with a
+full list of what's wrong, not just the first error) if anything required is
+missing or malformed — e.g. a non-numeric `ESPN_LEAGUE_ID`, or only one of
+`ESPN_S2`/`SWID` set.
+
+### Alternative: run with Docker
+
+```bash
+cp .env.example .env   # fill it in first
+touch all_time_records.json   # so Docker bind-mounts a file, not a directory
+docker compose up -d --build
+```
+
+Or without Compose:
+
+```bash
+docker build -t espn-fantasy-bot .
+touch all_time_records.json
+docker run -d --name espn-fantasy-bot \
+  --env-file .env \
+  -v "$(pwd)/all_time_records.json:/app/all_time_records.json" \
+  espn-fantasy-bot
+```
+
 ## Notes on the weekly recap scheduler
 
 If `RECAP_CHANNEL_ID` is set, the bot posts a recap to that channel every
