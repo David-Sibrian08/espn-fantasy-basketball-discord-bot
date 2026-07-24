@@ -14,7 +14,8 @@ to fork any code to do that, just configure your own `.env`.
 - `/league` — league name, season, team count, current week
 - `/standings` — current standings sorted by win percentage
 - `/matchup` — this week's (or any week's) head-to-head matchups, with
-  buttons/dropdown to page through other weeks
+  buttons/dropdown to page through other weeks, plus each side's top
+  individual scorer for that week
 - `/recap` — on-demand recap for a given week (highest/lowest scorer, biggest
   win, season trophy race, all-time record tracking)
 - `/lineupcheck` — on-demand check for OUT/DOUBTFUL players currently in a
