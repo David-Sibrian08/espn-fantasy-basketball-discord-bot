@@ -2,6 +2,9 @@ package com.fantasy.bot.config;
 
 import io.github.cdimascio.dotenv.Dotenv;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Single point of access for environment configuration. Checks the .env file
  * first (local dev) and falls back to real process environment variables
@@ -50,6 +53,48 @@ public final class BotConfig {
         } catch (NumberFormatException e) {
             return null;
         }
+    }
+
+    /**
+     * Checks all required/format-constrained env vars upfront and returns
+     * every problem found, so startup fails fast with one complete list
+     * instead of crashing on whichever var happens to be read first.
+     */
+    public List<String> validate() {
+        List<String> errors = new ArrayList<>();
+
+        if (isBlank(getRaw("DISCORD_TOKEN"))) {
+            errors.add("DISCORD_TOKEN is required (Discord Developer Portal > your app > Bot > Reset Token)");
+        }
+
+        String leagueId = getRaw("ESPN_LEAGUE_ID");
+        if (isBlank(leagueId)) {
+            errors.add("ESPN_LEAGUE_ID is required (found in your league's URL on fantasy.espn.com)");
+        } else if (!leagueId.trim().matches("\\d+")) {
+            errors.add("ESPN_LEAGUE_ID must be numeric, got: " + leagueId);
+        }
+
+        String season = getRaw("ESPN_SEASON_ID");
+        if (!isBlank(season) && !season.trim().matches("\\d{4}")) {
+            errors.add("ESPN_SEASON_ID should be a 4-digit year, got: " + season);
+        }
+
+        String recapChannel = getRaw("RECAP_CHANNEL_ID");
+        if (!isBlank(recapChannel) && !recapChannel.trim().matches("\\d+")) {
+            errors.add("RECAP_CHANNEL_ID must be numeric (a Discord channel ID), got: " + recapChannel);
+        }
+
+        boolean hasS2 = !isBlank(getRaw("ESPN_S2"));
+        boolean hasSwid = !isBlank(getRaw("SWID"));
+        if (hasS2 != hasSwid) {
+            errors.add("Only one of ESPN_S2/SWID is set — private leagues need both, public leagues need neither");
+        }
+
+        return errors;
+    }
+
+    private static boolean isBlank(String s) {
+        return s == null || s.isBlank();
     }
 
     public String getRaw(String key) {
