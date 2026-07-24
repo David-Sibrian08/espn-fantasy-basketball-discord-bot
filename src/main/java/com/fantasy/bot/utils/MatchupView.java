@@ -1,6 +1,7 @@
 package com.fantasy.bot.utils;
 
 import com.fantasy.bot.api.ESPNApiClient;
+import com.fantasy.bot.config.BotConfig;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -58,7 +59,7 @@ public class MatchupView {
         }
 
         // Header embed (like TS)
-        String seasonRaw = System.getenv("ESPN_SEASON_ID") != null ? System.getenv("ESPN_SEASON_ID") : "2026";
+        String seasonRaw = BotConfig.get().getEspnSeasonId();
         EmbedBuilder header = new EmbedBuilder()
                 .setTitle("Week " + currentWeek + " Head-to-Head Matchups • " + games.size() + " game(s)")
                 .setColor(Color.BLUE)

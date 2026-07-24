@@ -1,45 +1,55 @@
 package com.fantasy.bot.api;
 
+import com.fantasy.bot.config.BotConfig;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import io.github.cdimascio.dotenv.Dotenv;
 import okhttp3.*;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class ESPNApiClient {
+    private static final Logger log = LoggerFactory.getLogger(ESPNApiClient.class);
+
     // Prefer read-only host to avoid redirects
     private static final String HOST_READONLY = "https://lm-api-reads.fantasy.espn.com";
     private static final String HOST_PRIMARY = "https://fantasy.espn.com";
 
+    // Short TTL cache so bursts of interactions (e.g. matchup pager buttons)
+    // don't hammer ESPN with duplicate requests for the same season.
+    private static final long CACHE_TTL_MILLIS = 30_000;
+
     private final OkHttpClient client;
     private final String leagueId;
-    private final String seasonId;
+    private final String defaultSeasonId;
     private final String espnS2;
     private final String swid;
 
-    public ESPNApiClient() {
-        Dotenv dotenv = Dotenv.load();
-        this.client = new OkHttpClient.Builder()
-                .followRedirects(true)  // Follow redirects but we'll validate the response
-                .build();
-        this.leagueId = dotenv.get("ESPN_LEAGUE_ID");
-        this.seasonId = dotenv.get("ESPN_SEASON_ID") != null ?
-                dotenv.get("ESPN_SEASON_ID") : "2025";
-        this.espnS2 = dotenv.get("ESPN_S2");
-        this.swid = dotenv.get("SWID");
+    private final Map<String, CachedResponse> cache = new ConcurrentHashMap<>();
 
-        // Validate required environment variables
-        if (leagueId == null || leagueId.isEmpty()) {
-            throw new IllegalStateException("ESPN_LEAGUE_ID environment variable is required");
+    private record CachedResponse(JsonObject data, long fetchedAtMillis) {
+        boolean isFresh() {
+            return System.currentTimeMillis() - fetchedAtMillis < CACHE_TTL_MILLIS;
         }
     }
 
-    // overload
-    private String buildLeagueUrl(String host) {
-        return host + "/apis/v3/games/fba/seasons/" + seasonId +
-                "/segments/0/leagues/" + leagueId +
-                "?view=mMatchup&view=mStandings&view=mTeam&view=mSettings";
+    public ESPNApiClient() {
+        BotConfig config = BotConfig.get();
+
+        this.client = new OkHttpClient.Builder()
+                .followRedirects(true)
+                .build();
+        this.leagueId = config.getEspnLeagueId();
+        this.defaultSeasonId = config.getEspnSeasonId();
+        this.espnS2 = config.getEspnS2();
+        this.swid = config.getSwid();
+
+        if (espnS2 == null || espnS2.isBlank() || swid == null || swid.isBlank()) {
+            log.warn("ESPN_S2 and/or SWID not set. Private leagues will fail!");
+        }
     }
 
     private String buildLeagueUrl(String host, String seasonId) {
@@ -49,62 +59,29 @@ public class ESPNApiClient {
     }
 
     public JsonObject getLeagueData() throws IOException {
-        return getLeagueData(Integer.parseInt(seasonId));
+        return getLeagueData(Integer.parseInt(defaultSeasonId));
     }
 
-    //overload
     public JsonObject getLeagueData(int seasonId) throws IOException {
         String seasonStr = String.valueOf(seasonId);
 
+        CachedResponse cached = cache.get(seasonStr);
+        if (cached != null && cached.isFresh()) {
+            return cached.data();
+        }
+
+        JsonObject data;
         try {
-            return fetchLeagueData(HOST_READONLY, seasonStr);
+            data = fetchLeagueData(HOST_READONLY, seasonStr);
         } catch (IOException e) {
-            System.out.println("Read-only host failed for season " + seasonStr + ", trying primary host...");
-            return fetchLeagueData(HOST_PRIMARY, seasonStr);
+            log.info("Read-only host failed for season {}, trying primary host...", seasonStr);
+            data = fetchLeagueData(HOST_PRIMARY, seasonStr);
         }
+
+        cache.put(seasonStr, new CachedResponse(data, System.currentTimeMillis()));
+        return data;
     }
 
-    private JsonObject fetchLeagueData(String host) throws IOException {
-        String url = buildLeagueUrl(host);
-
-        Request.Builder requestBuilder = new Request.Builder()
-                .url(url)
-                .addHeader("Accept", "application/json")
-                .addHeader("User-Agent", "Mozilla/5.0");
-
-        // Add cookies for private leagues
-        if (espnS2 != null && !espnS2.isEmpty() && swid != null && !swid.isEmpty()) {
-            String cookieHeader = "espn_s2=" + espnS2 + "; SWID=" + swid;
-            requestBuilder.addHeader("Cookie", cookieHeader);
-        } else {
-            System.out.println("WARNING: No ESPN_S2 or SWID found. Private leagues will fail!");
-        }
-
-        Request request = requestBuilder.build();
-
-        try (Response response = client.newCall(request).execute()) {
-            System.out.println("Response code: " + response.code());
-
-            if (response.code() == 302 || response.code() == 301) {
-                throw new IOException("Got redirect (302/301). Your league is likely private. Please set ESPN_S2 and SWID environment variables.");
-            }
-
-            if (!response.isSuccessful()) {
-                throw new IOException("HTTP " + response.code() + ": " + response.message());
-            }
-
-            String responseBody = response.body().string();
-
-            // Check if response is actually JSON
-            if (responseBody.trim().startsWith("<")) {
-                throw new IOException("Received HTML instead of JSON. Your league might be private - set ESPN_S2 and SWID cookies.");
-            }
-
-            return JsonParser.parseString(responseBody).getAsJsonObject();
-        }
-    }
-
-    //overload
     private JsonObject fetchLeagueData(String host, String seasonId) throws IOException {
         String url = buildLeagueUrl(host, seasonId);
 
@@ -113,17 +90,14 @@ public class ESPNApiClient {
                 .addHeader("Accept", "application/json")
                 .addHeader("User-Agent", "Mozilla/5.0");
 
-        if (espnS2 != null && !espnS2.isEmpty() && swid != null && !swid.isEmpty()) {
-            String cookieHeader = "espn_s2=" + espnS2 + "; SWID=" + swid;
-            requestBuilder.addHeader("Cookie", cookieHeader);
-        } else {
-            System.out.println("WARNING: No ESPN_S2 or SWID found. Private leagues will fail!");
+        if (espnS2 != null && !espnS2.isBlank() && swid != null && !swid.isBlank()) {
+            requestBuilder.addHeader("Cookie", "espn_s2=" + espnS2 + "; SWID=" + swid);
         }
 
         Request request = requestBuilder.build();
 
         try (Response response = client.newCall(request).execute()) {
-            System.out.println("Response code: " + response.code());
+            log.debug("ESPN API response code: {}", response.code());
 
             if (response.code() == 302 || response.code() == 301) {
                 throw new IOException("Got redirect (302/301). Your league is likely private. Please set ESPN_S2 and SWID environment variables.");

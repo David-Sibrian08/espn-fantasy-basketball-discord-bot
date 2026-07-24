@@ -1,14 +1,16 @@
 package com.fantasy.bot.commands;
 
 import com.fantasy.bot.api.ESPNApiClient;
+import com.fantasy.bot.config.BotConfig;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import io.github.cdimascio.dotenv.Dotenv;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.awt.Color;
 import java.util.ArrayList;
@@ -16,7 +18,13 @@ import java.util.Comparator;
 import java.util.List;
 
 public class StandingsCommand extends ListenerAdapter {
-    private final ESPNApiClient apiClient = new ESPNApiClient();
+    private static final Logger log = LoggerFactory.getLogger(StandingsCommand.class);
+
+    private final ESPNApiClient apiClient;
+
+    public StandingsCommand(ESPNApiClient apiClient) {
+        this.apiClient = apiClient;
+    }
 
     public static CommandData getCommandData() {
         return Commands.slash("standings", "Show current league standings");
@@ -64,9 +72,7 @@ public class StandingsCommand extends ListenerAdapter {
             }
 
             // Get season year
-            Dotenv dotenv = Dotenv.load();
-            String season = dotenv.get("ESPN_SEASON_ID") != null ?
-                    dotenv.get("ESPN_SEASON_ID") : "2025";
+            String season = BotConfig.get().getEspnSeasonId();
 
             int endYear = Integer.parseInt(season);
             int startYear = endYear - 1;
@@ -104,7 +110,7 @@ public class StandingsCommand extends ListenerAdapter {
 
         } catch (Exception e) {
             event.getHook().sendMessage("❌ Failed to fetch standings data.").queue();
-            e.printStackTrace();
+            log.error("Failed to fetch standings data", e);
         }
     }
 
