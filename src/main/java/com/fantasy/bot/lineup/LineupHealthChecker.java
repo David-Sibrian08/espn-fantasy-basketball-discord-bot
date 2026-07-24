@@ -123,7 +123,8 @@ public class LineupHealthChecker {
         }
     }
 
-    private static Set<Integer> startingSlotIds(JsonObject leagueData) {
+    /** Slot IDs that count as "starting" (not bench=12 or IR=13), derived from the league's actual roster settings. */
+    public static Set<Integer> startingSlotIds(JsonObject leagueData) {
         Set<Integer> slots = new HashSet<>();
         if (!leagueData.has("settings")) return slots;
 
