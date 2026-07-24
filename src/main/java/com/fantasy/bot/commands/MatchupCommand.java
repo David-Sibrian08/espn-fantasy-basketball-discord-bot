@@ -10,13 +10,32 @@ import net.dv8tion.jda.api.hooks.ListenerAdapter;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.HashMap;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class MatchupCommand extends ListenerAdapter {
-    private final ESPNApiClient apiClient = new ESPNApiClient();
-    private final Map<String, MatchupView> activeViews = new HashMap<>();
+    private static final Logger log = LoggerFactory.getLogger(MatchupCommand.class);
+
+    // Capped + access-ordered so long-running bots don't leak one entry per
+    // /matchup call forever; oldest views are evicted once the cap is hit.
+    private static final int MAX_ACTIVE_VIEWS = 200;
+
+    private final ESPNApiClient apiClient;
+    private final Map<String, MatchupView> activeViews = Collections.synchronizedMap(
+            new LinkedHashMap<>(16, 0.75f, true) {
+                @Override
+                protected boolean removeEldestEntry(Map.Entry<String, MatchupView> eldest) {
+                    return size() > MAX_ACTIVE_VIEWS;
+                }
+            });
+
+    public MatchupCommand(ESPNApiClient apiClient) {
+        this.apiClient = apiClient;
+    }
 
     public static CommandData getCommandData() {
         return Commands.slash("matchup", "Show league matchups for a week")
@@ -68,7 +87,7 @@ public class MatchupCommand extends ListenerAdapter {
 
         } catch (Exception e) {
             event.getHook().sendMessage("❌ Failed to fetch matchup data.").queue();
-            e.printStackTrace();
+            log.error("Failed to fetch matchup data", e);
         }
     }
 
@@ -102,7 +121,7 @@ public class MatchupCommand extends ListenerAdapter {
 
         } catch (Exception e) {
             event.reply("❌ Failed to update matchup.").setEphemeral(true).queue();
-            e.printStackTrace();
+            log.error("Failed to update matchup", e);
         }
     }
 
@@ -129,7 +148,7 @@ public class MatchupCommand extends ListenerAdapter {
 
         } catch (Exception e) {
             event.reply("❌ Failed to update matchup.").setEphemeral(true).queue();
-            e.printStackTrace();
+            log.error("Failed to update matchup", e);
         }
     }
 }
