@@ -24,6 +24,9 @@ to fork any code to do that, just configure your own `.env`.
   no restart needed (requires Manage Server permission)
 - `/team <name>` — a team's current roster (starters/bench/IR), record, and
   rank, with autocomplete on team name
+- `/powerrankings` — all-play power rankings (each team's record if they'd
+  played every other team every week instead of just their real schedule),
+  alongside actual record for comparison
 - Optional automatic weekly recap posted to a channel of your choice every
   Monday
 - Optional automatic lineup health alerts — pings a starting player's owner
