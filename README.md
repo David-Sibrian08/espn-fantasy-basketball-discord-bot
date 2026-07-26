@@ -91,7 +91,11 @@ java -jar target/espn-fantasy-bot-1.0-SNAPSHOT.jar
 ```
 
 The bot registers its slash commands globally on startup, which can take up
-to an hour to show up in Discord the first time.
+to an hour to show up in Discord the first time. If you're actively
+developing, set `GUILD_ID` in `.env` to your test server's ID for instant
+command updates instead — just remember to unset it before running in
+production. Switching between the two never leaves duplicate commands
+behind; the bot clears whichever scope isn't currently in use.
 
 On startup, the bot validates your `.env` and will refuse to start (with a
 full list of what's wrong, not just the first error) if anything required is

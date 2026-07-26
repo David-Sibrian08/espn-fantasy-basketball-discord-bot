@@ -116,11 +116,31 @@ public final class BotConfig {
             errors.add("Only one of ESPN_S2/SWID is set — private leagues need both, public leagues need neither");
         }
 
+        String guildId = getRaw("GUILD_ID");
+        if (!isBlank(guildId) && !guildId.trim().matches("\\d+")) {
+            errors.add("GUILD_ID must be numeric (a Discord server ID), got: " + guildId);
+        }
+
         return errors;
     }
 
     private static boolean isBlank(String s) {
         return s == null || s.isBlank();
+    }
+
+    /**
+     * When set, slash commands register to this single guild instead of
+     * globally, for instant propagation during development (global commands
+     * take up to an hour). Leave unset for production.
+     */
+    public Long getGuildId() {
+        String raw = getRaw("GUILD_ID");
+        if (raw == null || raw.isBlank()) return null;
+        try {
+            return Long.parseLong(raw.trim());
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
 
     /** Returns null if unset or not a valid long, rather than throwing. */
