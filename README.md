@@ -153,6 +153,17 @@ automatically, gitignored) tracking highest/lowest score and biggest/smallest
 margin across your league's history. You can trigger a recap manually anytime
 with `/recap`, regardless of whether the scheduler is enabled.
 
+## Running tests
+
+```bash
+mvn test
+```
+
+Unit tests cover the pure calculation logic (lineup health alerts, box
+scores, power rankings, head-to-head) using synthetic fixtures — no ESPN
+credentials or network access needed. CI runs this on every push/PR via
+GitHub Actions.
+
 ## Security
 
 - Never commit your `.env` file — it's already gitignored, but double-check
