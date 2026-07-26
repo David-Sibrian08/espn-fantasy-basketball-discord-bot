@@ -36,6 +36,18 @@ public final class BotConfig {
         return getOrDefault("ESPN_SEASON_ID", "2025");
     }
 
+    /**
+     * The earliest season to include when computing history-spanning stats
+     * (all-time records, head-to-head). Defaults to the current season
+     * (i.e. no history) if unset, since assuming a specific start year would
+     * silently be wrong for anyone else self-hosting this for their own league.
+     */
+    public int getFirstSeasonId() {
+        String raw = getRaw("ESPN_FIRST_SEASON_ID");
+        if (raw == null || raw.isBlank()) return Integer.parseInt(getEspnSeasonId());
+        return Integer.parseInt(raw.trim());
+    }
+
     public String getEspnS2() {
         return getRaw("ESPN_S2");
     }
@@ -87,6 +99,15 @@ public final class BotConfig {
         String lineupAlertChannel = getRaw("LINEUP_ALERT_CHANNEL_ID");
         if (!isBlank(lineupAlertChannel) && !lineupAlertChannel.trim().matches("\\d+")) {
             errors.add("LINEUP_ALERT_CHANNEL_ID must be numeric (a Discord channel ID), got: " + lineupAlertChannel);
+        }
+
+        String firstSeason = getRaw("ESPN_FIRST_SEASON_ID");
+        if (!isBlank(firstSeason)) {
+            if (!firstSeason.trim().matches("\\d{4}")) {
+                errors.add("ESPN_FIRST_SEASON_ID should be a 4-digit year, got: " + firstSeason);
+            } else if (Integer.parseInt(firstSeason.trim()) > Integer.parseInt(getEspnSeasonId())) {
+                errors.add("ESPN_FIRST_SEASON_ID (" + firstSeason.trim() + ") is after ESPN_SEASON_ID (" + getEspnSeasonId() + ")");
+            }
         }
 
         boolean hasS2 = !isBlank(getRaw("ESPN_S2"));
