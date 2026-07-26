@@ -4,6 +4,7 @@ import io.github.cdimascio.dotenv.Dotenv;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Single point of access for environment configuration. Checks the .env file
@@ -14,10 +15,19 @@ import java.util.List;
 public final class BotConfig {
     private static final BotConfig INSTANCE = new BotConfig();
 
-    private final Dotenv dotenv;
+    private final Function<String, String> envLookup;
 
     private BotConfig() {
-        this.dotenv = Dotenv.configure().ignoreIfMissing().load();
+        Dotenv dotenv = Dotenv.configure().ignoreIfMissing().load();
+        this.envLookup = key -> {
+            String value = dotenv.get(key);
+            return value != null ? value : System.getenv(key);
+        };
+    }
+
+    /** Package-private: lets tests inject a fake environment instead of reading real dotenv/system env. */
+    BotConfig(Function<String, String> envLookup) {
+        this.envLookup = envLookup;
     }
 
     public static BotConfig get() {
@@ -155,11 +165,7 @@ public final class BotConfig {
     }
 
     public String getRaw(String key) {
-        String value = dotenv.get(key);
-        if (value == null) {
-            value = System.getenv(key);
-        }
-        return value;
+        return envLookup.apply(key);
     }
 
     private String getOrDefault(String key, String defaultValue) {
