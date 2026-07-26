@@ -39,6 +39,7 @@ public class CommandManager {
         jda.addEventListener(new TeamCommand(apiClient));
         jda.addEventListener(new PowerRankingsCommand(apiClient));
         jda.addEventListener(new HeadToHeadCommand(apiClient));
+        jda.addEventListener(new HelpCommand());
 
         CommandData[] commandData = {
                 LeagueCommand.getCommandData(),
@@ -49,7 +50,8 @@ public class CommandManager {
                 LineupAlertsCommand.getCommandData(),
                 TeamCommand.getCommandData(),
                 PowerRankingsCommand.getCommandData(),
-                HeadToHeadCommand.getCommandData()
+                HeadToHeadCommand.getCommandData(),
+                HelpCommand.getCommandData()
         };
 
         Long guildId = BotConfig.get().getGuildId();
