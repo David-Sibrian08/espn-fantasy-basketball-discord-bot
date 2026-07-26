@@ -16,16 +16,23 @@ import java.util.concurrent.atomic.AtomicBoolean;
  */
 public class LineupAlertsState {
     private static final Logger log = LoggerFactory.getLogger(LineupAlertsState.class);
-    private static final Path FILE = Path.of("lineup_alerts_state.json");
+    private static final Path DEFAULT_FILE = Path.of("lineup_alerts_state.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
     private record State(boolean enabled) {
     }
 
+    private final Path file;
     private final AtomicBoolean enabled;
 
     public LineupAlertsState() {
-        this.enabled = new AtomicBoolean(load());
+        this(DEFAULT_FILE);
+    }
+
+    /** Package-private: lets tests point at a temp file instead of the real project file. */
+    LineupAlertsState(Path file) {
+        this.file = file;
+        this.enabled = new AtomicBoolean(load(file));
     }
 
     public boolean isEnabled() {
@@ -34,14 +41,14 @@ public class LineupAlertsState {
 
     public void setEnabled(boolean value) {
         enabled.set(value);
-        save(value);
+        save(file, value);
     }
 
-    private static boolean load() {
-        if (!Files.exists(FILE)) return true; // default on
+    private static boolean load(Path file) {
+        if (!Files.exists(file)) return true; // default on
 
         try {
-            String json = Files.readString(FILE);
+            String json = Files.readString(file);
             State state = GSON.fromJson(json, State.class);
             return state != null ? state.enabled() : true;
         } catch (Exception e) {
@@ -50,9 +57,9 @@ public class LineupAlertsState {
         }
     }
 
-    private static void save(boolean value) {
+    private static void save(Path file, boolean value) {
         try {
-            Files.writeString(FILE, GSON.toJson(new State(value)));
+            Files.writeString(file, GSON.toJson(new State(value)));
         } catch (IOException e) {
             log.error("Failed to persist lineup_alerts_state.json", e);
         }
