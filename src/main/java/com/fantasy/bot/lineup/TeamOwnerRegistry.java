@@ -18,13 +18,18 @@ import java.util.Map;
  */
 public class TeamOwnerRegistry {
     private static final Logger log = LoggerFactory.getLogger(TeamOwnerRegistry.class);
-    private static final Path FILE = Path.of("team_owners.json");
+    private static final Path DEFAULT_FILE = Path.of("team_owners.json");
     private static final Gson GSON = new Gson();
 
     private final Map<String, String> teamIdToDiscordUserId;
 
     public TeamOwnerRegistry() {
-        this.teamIdToDiscordUserId = load();
+        this(DEFAULT_FILE);
+    }
+
+    /** Package-private: lets tests point at a temp file instead of the real project file. */
+    TeamOwnerRegistry(Path file) {
+        this.teamIdToDiscordUserId = load(file);
     }
 
     /** Discord user ID for the given ESPN team ID, or null if not configured (including blank entries, e.g. owners without Discord). */
@@ -33,14 +38,14 @@ public class TeamOwnerRegistry {
         return (value == null || value.isBlank()) ? null : value;
     }
 
-    private static Map<String, String> load() {
-        if (!Files.exists(FILE)) {
+    private static Map<String, String> load(Path file) {
+        if (!Files.exists(file)) {
             log.warn("team_owners.json not found — lineup health alerts won't be able to @mention anyone. See team_owners.example.json.");
             return Map.of();
         }
 
         try {
-            String json = Files.readString(FILE);
+            String json = Files.readString(file);
             Type type = new TypeToken<Map<String, String>>() {}.getType();
             Map<String, String> parsed = GSON.fromJson(json, type);
             return parsed != null ? parsed : Map.of();
