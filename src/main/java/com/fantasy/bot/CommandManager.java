@@ -31,6 +31,7 @@ public class CommandManager {
         jda.addEventListener(new LineupAlertsCommand(lineupAlertsState));
         jda.addEventListener(new TeamCommand(apiClient));
         jda.addEventListener(new PowerRankingsCommand(apiClient));
+        jda.addEventListener(new HeadToHeadCommand(apiClient));
 
         // Update commands globally
         jda.updateCommands().addCommands(
@@ -41,7 +42,8 @@ public class CommandManager {
                 LineupCheckCommand.getCommandData(),
                 LineupAlertsCommand.getCommandData(),
                 TeamCommand.getCommandData(),
-                PowerRankingsCommand.getCommandData()
+                PowerRankingsCommand.getCommandData(),
+                HeadToHeadCommand.getCommandData()
         ).queue();
     }
 }
