@@ -33,9 +33,6 @@ public class WeeklyRecapScheduler {
     private static final Path ALL_TIME_FILE = Path.of("all_time_records.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    // Your league history starts at 2019 (per you)
-    private static final int FIRST_SEASON_ID = 2019;
-
     public WeeklyRecapScheduler(JDA jda, ESPNApiClient apiClient) {
         this.jda = jda;
         this.apiClient = apiClient;
@@ -334,7 +331,8 @@ public class WeeklyRecapScheduler {
     private AllTimeRecordBook buildAllTimeRecordBookFromEspn(int currentSeasonId) {
         AllTimeRecordBook book = AllTimeRecordBook.defaultBook();
 
-        for (int season = FIRST_SEASON_ID; season <= currentSeasonId; season++) {
+        int firstSeasonId = BotConfig.get().getFirstSeasonId();
+        for (int season = firstSeasonId; season <= currentSeasonId; season++) {
             JsonObject seasonData;
             try {
                 // IMPORTANT: requires ESPNApiClient#getLeagueData(int seasonId)

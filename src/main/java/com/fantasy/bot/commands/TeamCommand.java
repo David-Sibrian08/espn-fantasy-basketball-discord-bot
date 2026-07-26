@@ -1,13 +1,13 @@
 package com.fantasy.bot.commands;
 
 import com.fantasy.bot.api.ESPNApiClient;
+import com.fantasy.bot.util.TeamLookup;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.interaction.command.CommandAutoCompleteInteractionEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
-import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
@@ -51,19 +51,7 @@ public class TeamCommand extends ListenerAdapter {
 
         try {
             JsonObject data = apiClient.getLeagueData();
-            String typed = event.getFocusedOption().getValue().toLowerCase();
-
-            List<Command.Choice> choices = new ArrayList<>();
-            JsonArray teams = data.getAsJsonArray("teams");
-            for (int i = 0; i < teams.size(); i++) {
-                JsonObject team = teams.get(i).getAsJsonObject();
-                String name = displayName(team);
-                if (typed.isEmpty() || name.toLowerCase().contains(typed)) {
-                    choices.add(new Command.Choice(name, name));
-                }
-                if (choices.size() >= 25) break; // Discord's autocomplete limit
-            }
-            event.replyChoices(choices).queue();
+            event.replyChoices(TeamLookup.autocompleteChoices(data, event.getFocusedOption().getValue())).queue();
         } catch (Exception e) {
             log.error("Failed to build /team autocomplete choices", e);
             event.replyChoices(List.of()).queue();
@@ -81,7 +69,7 @@ public class TeamCommand extends ListenerAdapter {
             JsonObject data = apiClient.getLeagueData();
             JsonArray teamsArray = data.getAsJsonArray("teams");
 
-            JsonObject team = findTeam(teamsArray, query);
+            JsonObject team = TeamLookup.findTeam(teamsArray, query);
             if (team == null) {
                 event.getHook().sendMessage("❌ No team found matching \"" + query + "\". Try `/league` to see team names.").queue();
                 return;
@@ -93,19 +81,6 @@ public class TeamCommand extends ListenerAdapter {
             event.getHook().sendMessage("❌ Failed to fetch team roster.").queue();
             log.error("Failed to fetch team roster", e);
         }
-    }
-
-    private JsonObject findTeam(JsonArray teamsArray, String query) {
-        String q = query.toLowerCase().trim();
-        JsonObject partialMatch = null;
-
-        for (int i = 0; i < teamsArray.size(); i++) {
-            JsonObject team = teamsArray.get(i).getAsJsonObject();
-            String name = displayName(team).toLowerCase();
-            if (name.equals(q)) return team;
-            if (partialMatch == null && name.contains(q)) partialMatch = team;
-        }
-        return partialMatch;
     }
 
     private EmbedBuilder buildTeamEmbed(JsonObject team, JsonArray allTeams) {
@@ -136,7 +111,7 @@ public class TeamCommand extends ListenerAdapter {
         starters.sort(Comparator.comparingInt(this::slotId));
 
         EmbedBuilder embed = new EmbedBuilder()
-                .setTitle("🏀 " + displayName(team))
+                .setTitle("🏀 " + TeamLookup.displayName(team))
                 .setColor(Color.ORANGE)
                 .addField("Record", wl, true)
                 .addField("Rank", "#" + computeRank(team, allTeams), true)
@@ -203,39 +178,5 @@ public class TeamCommand extends ListenerAdapter {
         }
         percentages.sort(Comparator.reverseOrder());
         return percentages.indexOf(thisPct) + 1;
-    }
-
-    private static String getString(JsonObject obj, String key) {
-        if (obj == null || key == null || !obj.has(key) || obj.get(key).isJsonNull()) return null;
-        try {
-            String s = obj.get(key).getAsString().trim();
-            return s.isEmpty() ? null : s;
-        } catch (Exception e) {
-            return null;
-        }
-    }
-
-    private static String joinNonBlank(String a, String b) {
-        if (a == null && b == null) return null;
-        if (a == null) return b;
-        if (b == null) return a;
-        String s = (a + " " + b).trim();
-        return s.isEmpty() ? null : s;
-    }
-
-    private static String displayName(JsonObject team) {
-        String name = getString(team, "name");
-        if (name != null) return name;
-
-        String loc = getString(team, "location");
-        String nick = getString(team, "nickname");
-        String locNick = joinNonBlank(loc, nick);
-        if (locNick != null) return locNick;
-
-        String abbrev = getString(team, "abbrev");
-        if (abbrev != null) return abbrev;
-
-        int id = team.has("id") && !team.get("id").isJsonNull() ? team.get("id").getAsInt() : -1;
-        return id > 0 ? ("Team " + id) : "Team";
     }
 }

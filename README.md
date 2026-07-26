@@ -27,6 +27,8 @@ to fork any code to do that, just configure your own `.env`.
 - `/powerrankings` — all-play power rankings (each team's record if they'd
   played every other team every week instead of just their real schedule),
   alongside actual record for comparison
+- `/headtohead <team1> <team2>` — all-time series record between two teams,
+  scanning every season back to `ESPN_FIRST_SEASON_ID` (see below)
 - Optional automatic weekly recap posted to a channel of your choice every
   Monday
 - Optional automatic lineup health alerts — pings a starting player's owner
@@ -56,6 +58,10 @@ to fork any code to do that, just configure your own `.env`.
 - **League ID**: visible in the URL when viewing your league on
   fantasy.espn.com, e.g. `.../leagues/lm-team?leagueId=123456` → `123456`.
 - **Season ID**: the year the season ends in, e.g. `2026` for the 2025-26 season.
+- **First season ID** (optional): the year your league's history starts, if
+  you want `/headtohead` and the all-time record book in weekly recaps to
+  look back further than the current season. Leave unset to only count the
+  current season.
 - **Private leagues only** — you'll also need two cookies from your browser
   session on fantasy.espn.com:
   1. Log into fantasy.espn.com.
