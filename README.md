@@ -22,6 +22,8 @@ to fork any code to do that, just configure your own `.env`.
   starting lineup slot
 - `/lineupalerts` — turn the automatic lineup health alerts on/off instantly,
   no restart needed (requires Manage Server permission)
+- `/team <name>` — a team's current roster (starters/bench/IR), record, and
+  rank, with autocomplete on team name
 - Optional automatic weekly recap posted to a channel of your choice every
   Monday
 - Optional automatic lineup health alerts — pings a starting player's owner
