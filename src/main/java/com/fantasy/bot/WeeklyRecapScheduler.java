@@ -20,6 +20,7 @@ import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 public class WeeklyRecapScheduler {
     private static final Logger log = LoggerFactory.getLogger(WeeklyRecapScheduler.class);
@@ -61,21 +62,13 @@ public class WeeklyRecapScheduler {
         log.info("Weekly recap scheduler started!");
     }
 
-    // Manual call (you can invoke this on Mondays)
-    public void runNow() {
-        if (recapChannelId == 0) {
-            log.warn("RECAP_CHANNEL_ID not set. Cannot post recap.");
-            return;
-        }
-        TextChannel channel = jda.getTextChannelById(recapChannelId);
-        if (channel == null) return;
-
-        sendWeeklyRecapToChannel(channel, null);
-    }
-
-    // Manual call to a specific channel / week (useful for testing)
-    public void runNow(TextChannel channel, Integer weekOverride) {
-        sendWeeklyRecapToChannel(channel, weekOverride);
+    // Manual call to a specific channel / week, with success/failure callbacks
+    // since the actual Discord send is asynchronous - without these, a
+    // caller has no way to know whether the message really went out (e.g.
+    // the bot lacking Send Messages/Embed Links in that channel) versus just
+    // having been handed off to JDA.
+    public void runNow(TextChannel channel, Integer weekOverride, Runnable onSuccess, Consumer<String> onFailure) {
+        sendWeeklyRecapToChannel(channel, weekOverride, onSuccess, onFailure);
     }
 
     private long calculateDelayUntilNextMonday() {
@@ -96,10 +89,12 @@ public class WeeklyRecapScheduler {
         TextChannel channel = jda.getTextChannelById(recapChannelId);
         if (channel == null) return;
 
-        sendWeeklyRecapToChannel(channel, null);
+        sendWeeklyRecapToChannel(channel, null,
+                () -> log.info("Weekly recap posted successfully"),
+                reason -> log.warn("Weekly recap failed: {}", reason));
     }
 
-    private void sendWeeklyRecapToChannel(TextChannel channel, Integer weekOverride) {
+    private void sendWeeklyRecapToChannel(TextChannel channel, Integer weekOverride, Runnable onSuccess, Consumer<String> onFailure) {
         try {
             int currentSeasonId = getCurrentSeasonId();
             JsonObject data = apiClient.getLeagueData(); // current season
@@ -115,7 +110,10 @@ public class WeeklyRecapScheduler {
 
             // Grab matchups for target week
             List<JsonObject> weekMatchups = getMatchupsForWeek(data, targetWeek);
-            if (weekMatchups.isEmpty()) return;
+            if (weekMatchups.isEmpty()) {
+                onFailure.accept("No completed matchups found for week " + targetWeek + ".");
+                return;
+            }
 
             // Weekly results (for week recap)
             WeeklyWinners weekly = computeWeeklyWinners(weekMatchups, teams);
@@ -192,10 +190,17 @@ public class WeeklyRecapScheduler {
 
             embed.setFooter("Season " + currentSeasonId + " • Week " + targetWeek);
 
-            channel.sendMessageEmbeds(embed.build()).queue();
+            channel.sendMessageEmbeds(embed.build()).queue(
+                    message -> onSuccess.run(),
+                    failure -> {
+                        log.error("Discord rejected the recap message", failure);
+                        onFailure.accept("Discord rejected the message (" + failure.getMessage() + "). " +
+                                "Check the bot has Send Messages and Embed Links permission in this channel.");
+                    });
 
         } catch (Exception e) {
-            log.error("Failed to send weekly recap", e);
+            log.error("Failed to build weekly recap", e);
+            onFailure.accept("Unexpected error: " + e.getMessage());
         }
     }
 
@@ -288,7 +293,7 @@ public class WeeklyRecapScheduler {
             byWeek.computeIfAbsent(w, k -> new ArrayList<>()).add(m);
         }
 
-        // counts
+        // how many times each team has taken each weekly accolade
         Map<String, Integer> highCount = new HashMap<>();
         Map<String, Integer> lowCount  = new HashMap<>();
         Map<String, Integer> winCount  = new HashMap<>();
@@ -297,8 +302,8 @@ public class WeeklyRecapScheduler {
         // season best values
         TeamScore seasonHigh = new TeamScore("—", -1);
         TeamScore seasonLow  = new TeamScore("—", Double.MAX_VALUE);
-        MarginResult seasonBigWin = new MarginResult("—", "—", -1);
-        MarginResult seasonBigLoss = new MarginResult("—", "—", -1); // same margin, but track loser label too
+        MarginResult seasonBiggestBlowout = new MarginResult("—", "—", -1);
+        int biggestBlowoutWeek = 0;
 
         for (int week = 1; week <= throughWeek; week++) {
             List<JsonObject> matchups = byWeek.getOrDefault(week, List.of());
@@ -314,14 +319,14 @@ public class WeeklyRecapScheduler {
             if (winners.highest.points > seasonHigh.points) seasonHigh = winners.highest;
             if (winners.lowest.points < seasonLow.points) seasonLow = winners.lowest;
 
-            if (winners.biggest.margin > seasonBigWin.margin) {
-                seasonBigWin = winners.biggest;
-                seasonBigLoss = winners.biggest; // same matchup margin, but loser is already tracked
+            if (winners.biggest.margin > seasonBiggestBlowout.margin) {
+                seasonBiggestBlowout = winners.biggest;
+                biggestBlowoutWeek = week;
             }
         }
 
         return new SeasonAccolades(highCount, lowCount, winCount, lossCount,
-                seasonHigh, seasonLow, seasonBigWin, seasonBigLoss);
+                seasonHigh, seasonLow, seasonBiggestBlowout, biggestBlowoutWeek);
     }
 
     // ----------------------------
@@ -533,39 +538,46 @@ public class WeeklyRecapScheduler {
     }
 
     private record SeasonAccolades(Map<String, Integer> highCount, Map<String, Integer> lowCount,
-                                   Map<String, Integer> winCount, Map<String, Integer> lossCount, TeamScore seasonHigh,
-                                   TeamScore seasonLow, MarginResult seasonBigWin, MarginResult seasonBigLoss) {
+                                   Map<String, Integer> winCount, Map<String, Integer> lossCount,
+                                   TeamScore seasonHigh, TeamScore seasonLow,
+                                   MarginResult seasonBiggestBlowout, int biggestBlowoutWeek) {
             SeasonAccolades() {
                 this(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(),
                         new TeamScore("—", -1), new TeamScore("—", Double.MAX_VALUE),
-                        new MarginResult("—", "—", -1), new MarginResult("—", "—", -1));
+                        new MarginResult("—", "—", -1), 0);
             }
 
         String toDiscordBlock() {
-                // Leader = top count
-                String highLeader = topKey(highCount);
-                String lowLeader = topKey(lowCount);
-                String winLeader = topKey(winCount);
-                String lossLeader = topKey(lossCount);
-
                 return "```txt\n" +
-                        "🔥 Highest Score: " + line(highLeader, highCount) + " — Season High: " + seasonHigh.teamName + " (" + fmt1(seasonHigh.points) + ")\n" +
-                        "❄️ Lowest Score:  " + line(lowLeader, lowCount) + " — Season Low: " + seasonLow.teamName + " (" + fmt1(seasonLow.points) + ")\n" +
-                        "💥 Biggest Win:   " + line(winLeader, winCount) + " — Season Best: " + seasonBigWin.winnerName + " by " + fmt1(seasonBigWin.margin) + "\n" +
-                        "🧱 Biggest Loss:  " + line(lossLeader, lossCount) + " — Season Worst: " + seasonBigLoss.loserName + " by " + fmt1(seasonBigLoss.margin) + "\n" +
+                        "🔥 Highest Score (Best: " + fmt1(seasonHigh.points) + ", " + seasonHigh.teamName + ")\n" +
+                        topThree(highCount) + "\n\n" +
+                        "❄️ Lowest Score (Worst: " + fmt1(seasonLow.points) + ", " + seasonLow.teamName + ")\n" +
+                        topThree(lowCount) + "\n\n" +
+                        "💪 Most Blowout Wins\n" +
+                        topThree(winCount) + "\n\n" +
+                        "🧱 Most Blowout Losses\n" +
+                        topThree(lossCount) + "\n\n" +
+                        "💥 Biggest Blowout: " + seasonBiggestBlowout.winnerName + " over " + seasonBiggestBlowout.loserName +
+                                " by " + fmt1(seasonBiggestBlowout.margin) +
+                                (biggestBlowoutWeek > 0 ? " (Week " + biggestBlowoutWeek + ")" : "") + "\n" +
                         "```";
             }
 
-            private static String topKey(Map<String, Integer> map) {
-                return map.entrySet().stream()
-                        .max(Map.Entry.comparingByValue())
-                        .map(Map.Entry::getKey)
-                        .orElse("—");
-            }
+            /** Top 3 teams by count, formatted as a numbered list; fewer than 3 shows however many exist. */
+            private static String topThree(Map<String, Integer> counts) {
+                List<Map.Entry<String, Integer>> entries = new ArrayList<>(counts.entrySet());
+                entries.sort((a, b) -> b.getValue() - a.getValue());
 
-            private static String line(String key, Map<String, Integer> map) {
-                if (key == null || "—".equals(key)) return "—";
-                return key + " x" + map.getOrDefault(key, 0);
+                if (entries.isEmpty()) return "  —";
+
+                int limit = Math.min(3, entries.size());
+                StringBuilder sb = new StringBuilder();
+                for (int i = 0; i < limit; i++) {
+                    sb.append("  ").append(i + 1).append(". ")
+                            .append(entries.get(i).getKey()).append(" — ").append(entries.get(i).getValue());
+                    if (i < limit - 1) sb.append("\n");
+                }
+                return sb.toString();
             }
         }
 
