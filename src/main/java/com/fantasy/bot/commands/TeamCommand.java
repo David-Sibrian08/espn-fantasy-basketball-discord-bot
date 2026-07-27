@@ -1,6 +1,7 @@
 package com.fantasy.bot.commands;
 
 import com.fantasy.bot.api.ESPNApiClient;
+import com.fantasy.bot.util.ErrorReplies;
 import com.fantasy.bot.util.TeamLookup;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -78,7 +79,7 @@ public class TeamCommand extends ListenerAdapter {
             event.getHook().sendMessageEmbeds(buildTeamEmbed(team, teamsArray).build()).queue();
 
         } catch (Exception e) {
-            event.getHook().sendMessage("❌ Failed to fetch team roster.").queue();
+            event.getHook().sendMessage(ErrorReplies.forFailure("fetch team roster", e)).queue();
             log.error("Failed to fetch team roster", e);
         }
     }

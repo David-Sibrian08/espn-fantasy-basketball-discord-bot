@@ -171,6 +171,36 @@ take a command (or the whole bot) down with it:
 - Discord gateway disconnects are handled by JDA's built-in auto-reconnect;
   the bot logs when this happens so it's visible in your logs, not silent.
 
+## Troubleshooting
+
+Run `/diagnostics` first (requires Manage Server permission) — it checks ESPN
+connectivity, whether `team_owners.json` is configured, whether your recap/
+lineup-alert channels exist and the bot can post in them, and whether the bot
+is accidentally still in dev mode. It's the fastest way to see what's actually
+misconfigured.
+
+Common issues:
+
+- **Slash commands aren't showing up at all.** Global command registration
+  can take up to an hour to propagate the first time. For instant updates
+  while setting up, set `GUILD_ID` to your server's ID and restart — just
+  remember to unset it again before running in production (see step 3 above).
+- **Commands like `/league` reply with "Failed to fetch league data" and a
+  message about private leagues.** Your league is private. Set `ESPN_S2` and
+  `SWID` in `.env` (see step 2 above) and restart.
+- **Lineup alerts fire but never @mention anyone.** `team_owners.json`
+  doesn't exist yet, is missing entries for the affected team, or has a
+  syntax error (the bot logs this at startup and falls back to no owners
+  rather than crashing — check your logs). Run `/diagnostics` to confirm.
+- **The bot doesn't come online at all.** Check the logs right after
+  startup — a bad `.env` (missing `DISCORD_TOKEN`, non-numeric
+  `ESPN_LEAGUE_ID`, etc.) prints every problem found and exits before ever
+  connecting to Discord.
+- **Duplicate commands in Discord's command picker.** Shouldn't happen — the
+  bot always clears whichever scope (global vs. your `GUILD_ID`) it isn't
+  currently using. If you still see duplicates, double check you didn't
+  invite the bot to the same server under two different applications.
+
 ## Running tests
 
 ```bash

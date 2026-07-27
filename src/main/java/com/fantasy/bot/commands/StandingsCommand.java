@@ -2,6 +2,7 @@ package com.fantasy.bot.commands;
 
 import com.fantasy.bot.api.ESPNApiClient;
 import com.fantasy.bot.config.BotConfig;
+import com.fantasy.bot.util.ErrorReplies;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.EmbedBuilder;
@@ -109,7 +110,7 @@ public class StandingsCommand extends ListenerAdapter {
             event.getHook().sendMessageEmbeds(embed.build()).queue();
 
         } catch (Exception e) {
-            event.getHook().sendMessage("❌ Failed to fetch standings data.").queue();
+            event.getHook().sendMessage(ErrorReplies.forFailure("fetch standings data", e)).queue();
             log.error("Failed to fetch standings data", e);
         }
     }

@@ -38,6 +38,9 @@ public class HelpCommand extends ListenerAdapter {
                         "`/lineupcheck` — Check for OUT/DOUBTFUL players in a starting lineup slot right now\n" +
                         "`/lineupalerts <enabled>` — Turn automatic lineup health alerts on or off (requires Manage Server)",
                         false)
+                .addField("Setup & Troubleshooting",
+                        "`/diagnostics` — Check ESPN connectivity and configuration (requires Manage Server)",
+                        false)
                 .addField("Enjoying the bot?",
                         "If you'd like to support development: Cash App $DavidSibrian08 · Venmo @David-Sibrian08 · PayPal @DavidSibrian08",
                         false);
