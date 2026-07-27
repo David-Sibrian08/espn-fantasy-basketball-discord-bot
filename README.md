@@ -172,6 +172,12 @@ GitHub Actions.
   immediately (Discord Developer Portal for the token; log out and back into
   ESPN for fresh cookies).
 
+## Support
+
+If you're enjoying the bot, consider supporting development: Cash App
+`$DavidSibrian08`, Venmo `@David-Sibrian08`, or PayPal `@DavidSibrian08`. Never
+required — just appreciated.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
