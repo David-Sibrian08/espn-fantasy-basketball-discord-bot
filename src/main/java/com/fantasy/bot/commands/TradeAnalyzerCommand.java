@@ -44,13 +44,17 @@ public class TradeAnalyzerCommand extends ListenerAdapter {
     }
 
     public static CommandData getCommandData() {
+        // Discord requires all required options before any optional ones, so
+        // the four required fields (both teams + one player each) come
+        // first, and the optional extra players (for 2-for-2/3-for-3 trades)
+        // come after.
         return Commands.slash("tradeanalyzer", "Compare the rest-of-season value of both sides of a trade")
                 .addOption(OptionType.STRING, "team1", "Your team", true, true)
                 .addOption(OptionType.STRING, "team1_player1", "Player you're giving up", true, true)
-                .addOption(OptionType.STRING, "team1_player2", "Another player you're giving up (optional)", false, true)
-                .addOption(OptionType.STRING, "team1_player3", "Another player you're giving up (optional)", false, true)
                 .addOption(OptionType.STRING, "team2", "The other team", true, true)
                 .addOption(OptionType.STRING, "team2_player1", "Player you'd receive", true, true)
+                .addOption(OptionType.STRING, "team1_player2", "Another player you're giving up (optional)", false, true)
+                .addOption(OptionType.STRING, "team1_player3", "Another player you're giving up (optional)", false, true)
                 .addOption(OptionType.STRING, "team2_player2", "Another player you'd receive (optional)", false, true)
                 .addOption(OptionType.STRING, "team2_player3", "Another player you'd receive (optional)", false, true);
     }
