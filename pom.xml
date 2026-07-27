@@ -67,6 +67,14 @@
             <version>5.10.2</version>
             <scope>test</scope>
         </dependency>
+
+        <!-- MockWebServer (tests only) - fakes ESPN's HTTP responses to test retry/fallback logic -->
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>mockwebserver</artifactId>
+            <version>4.12.0</version>
+            <scope>test</scope>
+        </dependency>
     </dependencies>
 
     <build>

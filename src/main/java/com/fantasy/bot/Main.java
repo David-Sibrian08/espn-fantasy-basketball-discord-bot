@@ -30,6 +30,7 @@ public class Main {
 
             JDA jda = JDABuilder.createDefault(token)
                     .enableIntents(GatewayIntent.GUILD_MESSAGES)
+                    .addEventListeners(new ConnectionHealthListener())
                     .build();
 
             jda.awaitReady();
