@@ -293,17 +293,15 @@ public class WeeklyRecapScheduler {
             byWeek.computeIfAbsent(w, k -> new ArrayList<>()).add(m);
         }
 
-        // counts
+        // counts (map size doubles as "how many distinct teams have led in this category")
         Map<String, Integer> highCount = new HashMap<>();
         Map<String, Integer> lowCount  = new HashMap<>();
-        Map<String, Integer> winCount  = new HashMap<>();
-        Map<String, Integer> lossCount = new HashMap<>();
 
         // season best values
         TeamScore seasonHigh = new TeamScore("—", -1);
         TeamScore seasonLow  = new TeamScore("—", Double.MAX_VALUE);
-        MarginResult seasonBigWin = new MarginResult("—", "—", -1);
-        MarginResult seasonBigLoss = new MarginResult("—", "—", -1); // same margin, but track loser label too
+        MarginResult seasonBiggestBlowout = new MarginResult("—", "—", -1);
+        int biggestBlowoutWeek = 0;
 
         for (int week = 1; week <= throughWeek; week++) {
             List<JsonObject> matchups = byWeek.getOrDefault(week, List.of());
@@ -313,20 +311,17 @@ public class WeeklyRecapScheduler {
 
             bump(highCount, winners.highest.teamName);
             bump(lowCount, winners.lowest.teamName);
-            bump(winCount, winners.biggest.winnerName);
-            bump(lossCount, winners.biggest.loserName);
 
             if (winners.highest.points > seasonHigh.points) seasonHigh = winners.highest;
             if (winners.lowest.points < seasonLow.points) seasonLow = winners.lowest;
 
-            if (winners.biggest.margin > seasonBigWin.margin) {
-                seasonBigWin = winners.biggest;
-                seasonBigLoss = winners.biggest; // same matchup margin, but loser is already tracked
+            if (winners.biggest.margin > seasonBiggestBlowout.margin) {
+                seasonBiggestBlowout = winners.biggest;
+                biggestBlowoutWeek = week;
             }
         }
 
-        return new SeasonAccolades(highCount, lowCount, winCount, lossCount,
-                seasonHigh, seasonLow, seasonBigWin, seasonBigLoss);
+        return new SeasonAccolades(highCount, lowCount, seasonHigh, seasonLow, seasonBiggestBlowout, biggestBlowoutWeek);
     }
 
     // ----------------------------
@@ -538,26 +533,25 @@ public class WeeklyRecapScheduler {
     }
 
     private record SeasonAccolades(Map<String, Integer> highCount, Map<String, Integer> lowCount,
-                                   Map<String, Integer> winCount, Map<String, Integer> lossCount, TeamScore seasonHigh,
-                                   TeamScore seasonLow, MarginResult seasonBigWin, MarginResult seasonBigLoss) {
+                                   TeamScore seasonHigh, TeamScore seasonLow,
+                                   MarginResult seasonBiggestBlowout, int biggestBlowoutWeek) {
             SeasonAccolades() {
-                this(new HashMap<>(), new HashMap<>(), new HashMap<>(), new HashMap<>(),
+                this(new HashMap<>(), new HashMap<>(),
                         new TeamScore("—", -1), new TeamScore("—", Double.MAX_VALUE),
-                        new MarginResult("—", "—", -1), new MarginResult("—", "—", -1));
+                        new MarginResult("—", "—", -1), 0);
             }
 
         String toDiscordBlock() {
                 // Leader = top count
                 String highLeader = topKey(highCount);
                 String lowLeader = topKey(lowCount);
-                String winLeader = topKey(winCount);
-                String lossLeader = topKey(lossCount);
 
                 return "```txt\n" +
-                        "🔥 Highest Score: " + line(highLeader, highCount) + " — Season High: " + seasonHigh.teamName + " (" + fmt1(seasonHigh.points) + ")\n" +
-                        "❄️ Lowest Score:  " + line(lowLeader, lowCount) + " — Season Low: " + seasonLow.teamName + " (" + fmt1(seasonLow.points) + ")\n" +
-                        "💥 Biggest Win:   " + line(winLeader, winCount) + " — Season Best: " + seasonBigWin.winnerName + " by " + fmt1(seasonBigWin.margin) + "\n" +
-                        "🧱 Biggest Loss:  " + line(lossLeader, lossCount) + " — Season Worst: " + seasonBigLoss.loserName + " by " + fmt1(seasonBigLoss.margin) + "\n" +
+                        "🔥 Highest Score: " + line(highLeader, highCount) + " (" + highCount.size() + " teams have led) — Season High: " + seasonHigh.teamName + " (" + fmt1(seasonHigh.points) + ")\n" +
+                        "❄️ Lowest Score:  " + line(lowLeader, lowCount) + " (" + lowCount.size() + " teams have led) — Season Low: " + seasonLow.teamName + " (" + fmt1(seasonLow.points) + ")\n" +
+                        "💥 Biggest Blowout: " + seasonBiggestBlowout.winnerName + " over " + seasonBiggestBlowout.loserName +
+                                " by " + fmt1(seasonBiggestBlowout.margin) +
+                                (biggestBlowoutWeek > 0 ? " (Week " + biggestBlowoutWeek + ")" : "") + "\n" +
                         "```";
             }
 
