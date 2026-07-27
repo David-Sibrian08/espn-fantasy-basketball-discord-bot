@@ -35,8 +35,11 @@ public class RecapCommand extends ListenerAdapter {
 
         try {
             TextChannel channel = event.getChannel().asTextChannel();
-            recap.runNow(channel, weekOpt);     // posts into the channel where the command was used
-            event.getHook().sendMessage("✅ Recap posted.").queue();
+            // Posting is asynchronous, so only report success once it's actually
+            // confirmed - not just because runNow() returned control back to us.
+            recap.runNow(channel, weekOpt,
+                    () -> event.getHook().sendMessage("✅ Recap posted.").queue(),
+                    reason -> event.getHook().sendMessage("❌ Failed to post recap: " + reason).queue());
         } catch (Exception e) {
             event.getHook().sendMessage(ErrorReplies.forFailure("post recap", e)).queue();
             log.error("Failed to post recap", e);

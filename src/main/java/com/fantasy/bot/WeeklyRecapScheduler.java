@@ -20,6 +20,7 @@ import java.time.*;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 
 public class WeeklyRecapScheduler {
     private static final Logger log = LoggerFactory.getLogger(WeeklyRecapScheduler.class);
@@ -61,21 +62,13 @@ public class WeeklyRecapScheduler {
         log.info("Weekly recap scheduler started!");
     }
 
-    // Manual call (you can invoke this on Mondays)
-    public void runNow() {
-        if (recapChannelId == 0) {
-            log.warn("RECAP_CHANNEL_ID not set. Cannot post recap.");
-            return;
-        }
-        TextChannel channel = jda.getTextChannelById(recapChannelId);
-        if (channel == null) return;
-
-        sendWeeklyRecapToChannel(channel, null);
-    }
-
-    // Manual call to a specific channel / week (useful for testing)
-    public void runNow(TextChannel channel, Integer weekOverride) {
-        sendWeeklyRecapToChannel(channel, weekOverride);
+    // Manual call to a specific channel / week, with success/failure callbacks
+    // since the actual Discord send is asynchronous - without these, a
+    // caller has no way to know whether the message really went out (e.g.
+    // the bot lacking Send Messages/Embed Links in that channel) versus just
+    // having been handed off to JDA.
+    public void runNow(TextChannel channel, Integer weekOverride, Runnable onSuccess, Consumer<String> onFailure) {
+        sendWeeklyRecapToChannel(channel, weekOverride, onSuccess, onFailure);
     }
 
     private long calculateDelayUntilNextMonday() {
@@ -96,10 +89,12 @@ public class WeeklyRecapScheduler {
         TextChannel channel = jda.getTextChannelById(recapChannelId);
         if (channel == null) return;
 
-        sendWeeklyRecapToChannel(channel, null);
+        sendWeeklyRecapToChannel(channel, null,
+                () -> log.info("Weekly recap posted successfully"),
+                reason -> log.warn("Weekly recap failed: {}", reason));
     }
 
-    private void sendWeeklyRecapToChannel(TextChannel channel, Integer weekOverride) {
+    private void sendWeeklyRecapToChannel(TextChannel channel, Integer weekOverride, Runnable onSuccess, Consumer<String> onFailure) {
         try {
             int currentSeasonId = getCurrentSeasonId();
             JsonObject data = apiClient.getLeagueData(); // current season
@@ -115,7 +110,10 @@ public class WeeklyRecapScheduler {
 
             // Grab matchups for target week
             List<JsonObject> weekMatchups = getMatchupsForWeek(data, targetWeek);
-            if (weekMatchups.isEmpty()) return;
+            if (weekMatchups.isEmpty()) {
+                onFailure.accept("No completed matchups found for week " + targetWeek + ".");
+                return;
+            }
 
             // Weekly results (for week recap)
             WeeklyWinners weekly = computeWeeklyWinners(weekMatchups, teams);
@@ -192,10 +190,17 @@ public class WeeklyRecapScheduler {
 
             embed.setFooter("Season " + currentSeasonId + " • Week " + targetWeek);
 
-            channel.sendMessageEmbeds(embed.build()).queue();
+            channel.sendMessageEmbeds(embed.build()).queue(
+                    message -> onSuccess.run(),
+                    failure -> {
+                        log.error("Discord rejected the recap message", failure);
+                        onFailure.accept("Discord rejected the message (" + failure.getMessage() + "). " +
+                                "Check the bot has Send Messages and Embed Links permission in this channel.");
+                    });
 
         } catch (Exception e) {
-            log.error("Failed to send weekly recap", e);
+            log.error("Failed to build weekly recap", e);
+            onFailure.accept("Unexpected error: " + e.getMessage());
         }
     }
 
