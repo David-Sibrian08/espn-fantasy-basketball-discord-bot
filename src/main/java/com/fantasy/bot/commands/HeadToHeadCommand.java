@@ -4,6 +4,7 @@ import com.fantasy.bot.api.ESPNApiClient;
 import com.fantasy.bot.config.BotConfig;
 import com.fantasy.bot.headtohead.HeadToHeadCalculator;
 import com.fantasy.bot.headtohead.HeadToHeadCalculator.HeadToHeadRecord;
+import com.fantasy.bot.util.ErrorReplies;
 import com.fantasy.bot.util.TeamLookup;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
@@ -134,7 +135,7 @@ public class HeadToHeadCommand extends ListenerAdapter {
             event.getHook().sendMessageEmbeds(embed.build()).queue();
 
         } catch (Exception e) {
-            event.getHook().sendMessage("❌ Failed to compute head-to-head record.").queue();
+            event.getHook().sendMessage(ErrorReplies.forFailure("compute head-to-head record", e)).queue();
             log.error("Failed to compute head-to-head record", e);
         }
     }

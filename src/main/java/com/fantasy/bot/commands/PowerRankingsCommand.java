@@ -3,6 +3,7 @@ package com.fantasy.bot.commands;
 import com.fantasy.bot.api.ESPNApiClient;
 import com.fantasy.bot.powerrankings.PowerRankingsCalculator;
 import com.fantasy.bot.powerrankings.PowerRankingsCalculator.TeamPowerRank;
+import com.fantasy.bot.util.ErrorReplies;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -73,7 +74,7 @@ public class PowerRankingsCommand extends ListenerAdapter {
             event.getHook().sendMessageEmbeds(embed.build()).queue();
 
         } catch (Exception e) {
-            event.getHook().sendMessage("❌ Failed to compute power rankings.").queue();
+            event.getHook().sendMessage(ErrorReplies.forFailure("compute power rankings", e)).queue();
             log.error("Failed to compute power rankings", e);
         }
     }

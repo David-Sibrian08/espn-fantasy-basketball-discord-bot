@@ -67,4 +67,23 @@ class TeamOwnerRegistryTest {
         assertNull(registry.getDiscordUserId(1));
         assertNull(registry.getDiscordUserId(2));
     }
+
+    @Test
+    void configuredOwnerCountIsZeroWhenFileMissing(@TempDir Path tempDir) {
+        Path file = tempDir.resolve("team_owners.json");
+
+        TeamOwnerRegistry registry = new TeamOwnerRegistry(file);
+
+        assertEquals(0, registry.configuredOwnerCount());
+    }
+
+    @Test
+    void configuredOwnerCountExcludesBlankEntries(@TempDir Path tempDir) throws IOException {
+        Path file = tempDir.resolve("team_owners.json");
+        Files.writeString(file, "{\"1\": \"253261863633158146\", \"2\": \"727583134195122258\", \"12\": \"\", \"21\": \"\"}");
+
+        TeamOwnerRegistry registry = new TeamOwnerRegistry(file);
+
+        assertEquals(2, registry.configuredOwnerCount());
+    }
 }

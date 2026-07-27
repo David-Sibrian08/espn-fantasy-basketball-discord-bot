@@ -1,6 +1,7 @@
 package com.fantasy.bot.commands;
 
 import com.fantasy.bot.WeeklyRecapScheduler;
+import com.fantasy.bot.util.ErrorReplies;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -37,7 +38,7 @@ public class RecapCommand extends ListenerAdapter {
             recap.runNow(channel, weekOpt);     // posts into the channel where the command was used
             event.getHook().sendMessage("✅ Recap posted.").queue();
         } catch (Exception e) {
-            event.getHook().sendMessage("❌ Failed to post recap.").queue();
+            event.getHook().sendMessage(ErrorReplies.forFailure("post recap", e)).queue();
             log.error("Failed to post recap", e);
         }
     }

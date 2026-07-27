@@ -4,6 +4,7 @@ import com.fantasy.bot.api.ESPNApiClient;
 import com.fantasy.bot.lineup.LineupHealthChecker;
 import com.fantasy.bot.lineup.LineupHealthChecker.LineupAlert;
 import com.fantasy.bot.lineup.TeamOwnerRegistry;
+import com.fantasy.bot.util.ErrorReplies;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -73,7 +74,7 @@ public class LineupCheckCommand extends ListenerAdapter {
             event.getHook().sendMessageEmbeds(embed.build()).queue();
 
         } catch (Exception e) {
-            event.getHook().sendMessage("❌ Failed to run lineup check.").queue();
+            event.getHook().sendMessage(ErrorReplies.forFailure("run lineup check", e)).queue();
             log.error("Failed to run lineup check", e);
         }
     }

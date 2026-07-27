@@ -38,6 +38,13 @@ public class TeamOwnerRegistry {
         return (value == null || value.isBlank()) ? null : value;
     }
 
+    /** Number of teams with a non-blank Discord user ID configured. Used by /diagnostics. */
+    public int configuredOwnerCount() {
+        return (int) teamIdToDiscordUserId.values().stream()
+                .filter(v -> v != null && !v.isBlank())
+                .count();
+    }
+
     private static Map<String, String> load(Path file) {
         if (!Files.exists(file)) {
             log.warn("team_owners.json not found — lineup health alerts won't be able to @mention anyone. See team_owners.example.json.");

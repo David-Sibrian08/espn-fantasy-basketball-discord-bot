@@ -1,6 +1,7 @@
 package com.fantasy.bot.commands;
 
 import com.fantasy.bot.api.ESPNApiClient;
+import com.fantasy.bot.util.ErrorReplies;
 import com.fantasy.bot.utils.MatchupView;
 import com.google.gson.JsonObject;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
@@ -86,7 +87,7 @@ public class MatchupCommand extends ListenerAdapter {
                     });
 
         } catch (Exception e) {
-            event.getHook().sendMessage("❌ Failed to fetch matchup data.").queue();
+            event.getHook().sendMessage(ErrorReplies.forFailure("fetch matchup data", e)).queue();
             log.error("Failed to fetch matchup data", e);
         }
     }
@@ -120,7 +121,9 @@ public class MatchupCommand extends ListenerAdapter {
                     .queue();
 
         } catch (Exception e) {
-            event.reply("❌ Failed to update matchup.").setEphemeral(true).queue();
+            // deferEdit() already acknowledged the interaction, so the follow-up
+            // has to go through the hook, not a fresh reply().
+            event.getHook().sendMessage(ErrorReplies.forFailure("update matchup", e)).setEphemeral(true).queue();
             log.error("Failed to update matchup", e);
         }
     }
@@ -147,7 +150,9 @@ public class MatchupCommand extends ListenerAdapter {
                     .queue();
 
         } catch (Exception e) {
-            event.reply("❌ Failed to update matchup.").setEphemeral(true).queue();
+            // deferEdit() already acknowledged the interaction, so the follow-up
+            // has to go through the hook, not a fresh reply().
+            event.getHook().sendMessage(ErrorReplies.forFailure("update matchup", e)).setEphemeral(true).queue();
             log.error("Failed to update matchup", e);
         }
     }
