@@ -153,6 +153,24 @@ automatically, gitignored) tracking highest/lowest score and biggest/smallest
 margin across your league's history. You can trigger a recap manually anytime
 with `/recap`, regardless of whether the scheduler is enabled.
 
+## Reliability
+
+Meant to run unattended for months, so a bad response from ESPN shouldn't
+take a command (or the whole bot) down with it:
+
+- A single command failing (bad data, ESPN hiccup) only affects that
+  interaction — it can't crash the bot process.
+- Transient ESPN failures (timeouts, 5xx errors) get retried automatically
+  before giving up; a real config problem (bad league ID, a private league
+  missing cookies) fails immediately instead of wasting time retrying
+  something a retry can't fix.
+- If ESPN is down or erroring and there's no way to get a fresh response, the
+  bot falls back to the last successful response it cached, rather than
+  failing outright — so a short ESPN outage shows slightly stale data
+  instead of an error.
+- Discord gateway disconnects are handled by JDA's built-in auto-reconnect;
+  the bot logs when this happens so it's visible in your logs, not silent.
+
 ## Running tests
 
 ```bash
@@ -160,9 +178,10 @@ mvn test
 ```
 
 Unit tests cover the pure calculation logic (lineup health alerts, box
-scores, power rankings, head-to-head) using synthetic fixtures — no ESPN
-credentials or network access needed. CI runs this on every push/PR via
-GitHub Actions.
+scores, power rankings, head-to-head) using synthetic fixtures, plus the
+ESPN API client's retry/fallback/stale-cache behavior (using a fake HTTP
+server, no real ESPN credentials or network access needed). CI runs this on
+every push/PR via GitHub Actions.
 
 ## Security
 
