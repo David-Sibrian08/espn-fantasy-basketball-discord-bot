@@ -32,7 +32,8 @@ public class HelpCommand extends ListenerAdapter {
                         "`/headtohead <team1> <team2>` — All-time series record between two teams",
                         false)
                 .addField("Teams",
-                        "`/team <name>` — A team's current roster",
+                        "`/team <name>` — A team's current roster\n" +
+                        "`/tradeanalyzer` — Compare the rest-of-season value of both sides of a trade, adjusted for positional need",
                         false)
                 .addField("Lineup Health",
                         "`/lineupcheck` — Check for OUT/DOUBTFUL players in a starting lineup slot right now\n" +
