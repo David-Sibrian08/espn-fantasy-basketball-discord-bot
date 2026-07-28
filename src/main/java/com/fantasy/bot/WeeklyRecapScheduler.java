@@ -180,8 +180,10 @@ public class WeeklyRecapScheduler {
 
             // Blank spacer field so the trophy race doesn't crowd right up against
             // the "this week" fields above it - Discord embeds have no other way
-            // to add vertical gap between rows.
-            embed.addField("​", "​", false);
+            // to add vertical gap between rows. Uses U+2800 (braille blank) instead
+            // of a zero-width space - Discord's mobile client collapses fields whose
+            // name/value are pure zero-width space, but renders U+2800 fine.
+            embed.addField("⠀", "⠀", false);
 
             // Season trophy race (counts through targetWeek + season best values)
             embed.addField("🏆 Season Trophy Race (through Week " + targetWeek + ")",
