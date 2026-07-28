@@ -107,17 +107,25 @@ missing or malformed — e.g. a non-numeric `ESPN_LEAGUE_ID`, or only one of
 ```bash
 cp .env.example .env   # fill it in first
 touch all_time_records.json   # so Docker bind-mounts a file, not a directory
+touch team_owners.json        # same reason - see below if you want lineup alerts to actually @mention owners
 docker compose up -d --build
 ```
+
+An empty `team_owners.json` just means no owners are configured yet (lineup
+alerts still work, they just won't @mention anyone) - see
+[Setting up lineup health alerts](#setting-up-lineup-health-alerts-optional)
+to fill it in for real.
 
 Or without Compose:
 
 ```bash
 docker build -t espn-fantasy-bot .
 touch all_time_records.json
+touch team_owners.json
 docker run -d --name espn-fantasy-bot \
   --env-file .env \
   -v "$(pwd)/all_time_records.json:/app/all_time_records.json" \
+  -v "$(pwd)/team_owners.json:/app/team_owners.json" \
   espn-fantasy-bot
 ```
 
