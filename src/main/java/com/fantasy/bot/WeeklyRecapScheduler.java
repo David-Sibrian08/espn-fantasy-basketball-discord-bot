@@ -251,8 +251,11 @@ public class WeeklyRecapScheduler {
             if (h > highest.points) highest = new TeamScore(hName, h);
             if (a > highest.points) highest = new TeamScore(aName, a);
 
-            if (h < lowest.points) lowest = new TeamScore(hName, h);
-            if (a < lowest.points) lowest = new TeamScore(aName, a);
+            // A score of exactly 0 means the team never set a roster that week
+            // (bye/forfeit in the playoff or consolation bracket), not a real
+            // worst performance - exclude it so it can't be crowned "lowest score".
+            if (h > 0 && h < lowest.points) lowest = new TeamScore(hName, h);
+            if (a > 0 && a < lowest.points) lowest = new TeamScore(aName, a);
 
             // Margins
             double margin = Math.abs(h - a);
@@ -375,9 +378,9 @@ public class WeeklyRecapScheduler {
                 if (h > book.highestScore.points) book.highestScore = AllTimeRecord.team("🔥 Highest Score Ever", season, week, hName, aName, h);
                 if (a > book.highestScore.points) book.highestScore = AllTimeRecord.team("🔥 Highest Score Ever", season, week, aName, hName, a);
 
-                // Lowest score ever
-                if (h < book.lowestScore.points) book.lowestScore = AllTimeRecord.team("❄️ Lowest Score Ever", season, week, hName, aName, h);
-                if (a < book.lowestScore.points) book.lowestScore = AllTimeRecord.team("❄️ Lowest Score Ever", season, week, aName, hName, a);
+                // Lowest score ever (exclude 0 - that's an unset roster/bye, not a real performance)
+                if (h > 0 && h < book.lowestScore.points) book.lowestScore = AllTimeRecord.team("❄️ Lowest Score Ever", season, week, hName, aName, h);
+                if (a > 0 && a < book.lowestScore.points) book.lowestScore = AllTimeRecord.team("❄️ Lowest Score Ever", season, week, aName, hName, a);
 
                 // Margins
                 double margin = Math.abs(h - a);
