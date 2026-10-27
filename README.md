@@ -108,6 +108,7 @@ missing or malformed — e.g. a non-numeric `ESPN_LEAGUE_ID`, or only one of
 cp .env.example .env   # fill it in first
 touch all_time_records.json   # so Docker bind-mounts a file, not a directory
 touch team_owners.json        # same reason - see below if you want lineup alerts to actually @mention owners
+touch lineup_alerts_state.json   # same reason - keeps the /lineupalerts on/off setting across rebuilds
 docker compose up -d --build
 ```
 
@@ -122,10 +123,12 @@ Or without Compose:
 docker build -t espn-fantasy-bot .
 touch all_time_records.json
 touch team_owners.json
+touch lineup_alerts_state.json
 docker run -d --name espn-fantasy-bot \
   --env-file .env \
   -v "$(pwd)/all_time_records.json:/app/all_time_records.json" \
   -v "$(pwd)/team_owners.json:/app/team_owners.json" \
+  -v "$(pwd)/lineup_alerts_state.json:/app/lineup_alerts_state.json" \
   espn-fantasy-bot
 ```
 
