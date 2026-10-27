@@ -5,10 +5,12 @@ services:
     restart: unless-stopped
     volumes:
       # Bind-mounts single files so they survive container restarts/rebuilds
-      # and so the running bot can actually see them - without this, both
-      # only exist in the build context, never in the container's
-      # filesystem. Each file must already exist on the host before first
-      # run (Docker creates an empty directory instead if it doesn't) -
-      # see README for the `touch` step and team_owners.json setup.
+      # and so the running bot can actually see them - without this, they
+      # only exist in the build context (or, for the alerts toggle, only in
+      # the container's own filesystem, lost on every recreate). Each file
+      # must already exist on the host before first run (Docker creates an
+      # empty directory instead if it doesn't) - see README for the `touch`
+      # step and team_owners.json setup.
       - ./all_time_records.json:/app/all_time_records.json
       - ./team_owners.json:/app/team_owners.json
+      - ./lineup_alerts_state.json:/app/lineup_alerts_state.json
